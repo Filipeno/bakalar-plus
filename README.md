@@ -92,10 +92,14 @@ cd ../web && npm run build && cd ../worker && npm run deploy
   všechna zapnutá upozornění přestanou fungovat a lidi je musí zapnout znovu. `TOKEN_KEY` šifruje uložené
   tokeny; když ho změníš, server je nerozšifruje a uživatelé dostanou „přihlášení vypršelo“.
 - Pro `wrangler dev` dej stejné hodnoty do `worker/.dev.vars` (je v `.gitignore`).
-- **Kontrolní smyčka**: cron běží každou minutu a zkontroluje uživatele, kteří nebyli kontrolováni déle než
-  `CHECK_INTERVAL_MIN` (výchozí 10), nejvýš `CHECK_BATCH` (výchozí 6) naráz, jednoho po druhém. Bezplatný plán
-  dovolí 50 požadavků na jeden běh a jeden uživatel jich potřebuje asi 5. To dává ~60 lidí za 10 minut; když jich
-  je víc, každý se prostě kontroluje o něco řidčeji. Na placeném plánu jde `CHECK_BATCH` zvýšit.
+- **Kontrolní smyčka**: cron běží každou minutu a vezme uživatele, kteří nebyli kontrolováni déle než
+  `CHECK_INTERVAL_MIN` (výchozí 10), nejvýš `CHECK_BATCH` (výchozí 20). Každou kontrolu spustí jako samostatné
+  volání Workeru (binding `SELF`), protože jedna kontrola spotřebuje kolem 10 ms výpočtu, což je celý limit jednoho
+  volání na bezplatném plánu. To dává ~200 lidí za 10 minut; když jich je víc, každý se kontroluje o něco řidčeji.
+- **Školy, které blokují Cloudflare** (třeba SPŠ Třebešín): Worker se ke škole přímo nedostane, tak jde přes bránu
+  `gateway/gateway.py` na počítači s běžným českým připojením (Raspberry Pi). Worker ji volá soukromě přes
+  Cloudflare Tunnel (Workers VPC), brána nemá žádnou veřejnou adresu, pouští jen cesty Bakalářů a nic neukládá.
+  Nastavení: `gateway/README.md`.
 - `npm test` ověří šifrování push zpráv a VAPID podpis proti nezávislým implementacím.
 
 ### Android

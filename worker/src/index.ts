@@ -5,7 +5,7 @@
 // ask the school "who is this and which class". Only users who turn on web notifications leave a Bakaláři refresh
 // token here, encrypted (TOKEN_KEY), and "delete my data" (DELETE /me) removes it.
 
-import { CORS, fail, identify, json, noContent, readSession, schoolBase, signSession, type Env } from "./util";
+import { CORS, fail, identify, json, noContent, readSession, schoolBase, schoolFetch, signSession, type Env } from "./util";
 import { deleteMe, pushApi, runChecks } from "./push";
 
 export default {
@@ -13,7 +13,7 @@ export default {
     const url = new URL(req.url);
     if (req.method === "OPTIONS") return noContent();
     try {
-      if (url.pathname === "/relay") return await relay(req, url, ctx);
+      if (url.pathname === "/relay") return await relay(req, url, env, ctx);
       if (url.pathname.startsWith("/cal/")) return await calendar(req, url, env);
       if (url.pathname.startsWith("/push/")) return await pushApi(req, url, env);
       if (url.pathname === "/me" && req.method === "DELETE") return await deleteMe(req, env);
@@ -36,21 +36,21 @@ const DIRECTORY_HOST = "sluzby.bakalari.cz";
 const SCHOOL_PATH = /^(\/[\w.-]+)?\/(api(\/.*)?|Timetable\/Public(\/.*)?)$/i;
 
 /** Is `origin`+`prefix` a real Bakaláři server? Asks its /api (answers with ApiVersion); cached for a day. */
-async function isBakalari(base: string, ctx: ExecutionContext): Promise<boolean> {
+async function isBakalari(env: Env, base: string, ctx: ExecutionContext): Promise<boolean> {
   const cache = caches.default;
   const key = new Request(`https://bp-cache.invalid/is-bakalari?u=${encodeURIComponent(base)}`);
   const hit = await cache.match(key);
   if (hit) return (await hit.text()) === "1";
   let ok = false;
   try {
-    const r = await fetch(`${base}/api`, { headers: { Accept: "application/json" }, redirect: "manual", cf: { cacheTtl: 0 } });
+    const r = await schoolFetch(env, `${base}/api`, { headers: { Accept: "application/json" }, redirect: "manual" });
     ok = r.status === 200 && /"ApiVersion"/i.test(await r.text());
   } catch { ok = false; }
   ctx.waitUntil(cache.put(key, new Response(ok ? "1" : "0", { headers: { "Cache-Control": `max-age=${ok ? 86400 : 600}` } })));
   return ok;
 }
 
-async function relay(req: Request, url: URL, ctx: ExecutionContext): Promise<Response> {
+async function relay(req: Request, url: URL, env: Env, ctx: ExecutionContext): Promise<Response> {
   const denied = (why: string) => new Response(why, { status: 403, headers: { ...CORS, "x-relay": "denied" } });
   let target: URL;
   try { target = new URL(url.searchParams.get("u") ?? ""); } catch { return denied("bad url"); }
@@ -62,7 +62,7 @@ async function relay(req: Request, url: URL, ctx: ExecutionContext): Promise<Res
     const m = SCHOOL_PATH.exec(target.pathname);
     if (!m) return denied("path");
     const base = `${target.origin}${m[1] ?? ""}`;
-    if (!(await isBakalari(base, ctx))) return denied("not a Bakaláři server");
+    if (!(await isBakalari(env, base, ctx))) return denied("not a Bakaláři server");
   }
   if (!["GET", "POST", "PUT"].includes(req.method)) return denied("method");
 
@@ -73,7 +73,9 @@ async function relay(req: Request, url: URL, ctx: ExecutionContext): Promise<Res
   }
   const body = req.method === "GET" ? undefined : await req.arrayBuffer();
   if (body && body.byteLength > 64 * 1024) return denied("too big");
-  const r = await fetch(target.toString(), { method: req.method, headers, body, redirect: "manual" });
+  const r = target.hostname === DIRECTORY_HOST
+    ? await fetch(target.toString(), { method: req.method, headers, body, redirect: "manual" })
+    : await schoolFetch(env, target.toString(), { method: req.method, headers, body, redirect: "manual" });
   const out = new Headers({ ...CORS, "x-relay": "ok", "Cache-Control": "no-store" });
   out.set("Content-Type", r.headers.get("content-type") ?? "text/plain");
   return new Response(r.body, { status: r.status, headers: out });

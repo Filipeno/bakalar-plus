@@ -14,15 +14,27 @@ binding = "DB"
 database_name = "bakalar-plus"
 database_id = "f89b8ade-c7db-43d8-8772-0eed32ac1812"
 
+# Private route to gateway/gateway.py on the Raspberry Pi (Cloudflare Tunnel "Hlubocepy"), for schools whose
+# firewalls drop Cloudflare's traffic. Created with:
+#   wrangler vpc service create bp-gateway --type http --tunnel-id <tunnel> --ipv4 127.0.0.1 --http-port 8770
+[[vpc_services]]
+binding = "GATEWAY"
+service_id = "01a0f3cf-ac16-7aa1-9c55-aa3182238f5d"
+
+# This Worker itself: the cron hands each user's check to a separate invocation (own CPU budget).
+[[services]]
+binding = "SELF"
+service = "bakalar-plus"
+
 # Push checks: every minute the users whose last check is older than CHECK_INTERVAL_MIN get checked,
-# CHECK_BATCH at a time (the free plan allows 50 outgoing requests per run; one user needs about 5).
+# CHECK_BATCH at a time. Each check is its own invocation (SELF), the cron makes one subrequest per user (max 50).
 [triggers]
 crons = ["* * * * *"]
 
 [vars]
 CHECK_INTERVAL_MIN = "10"
-CHECK_BATCH = "6"
+CHECK_BATCH = "20"
 
 # Secrets (never in this file), see README: SESSION_SECRET, TOKEN_KEY, VAPID_PUBLIC, VAPID_PRIVATE_JWK,
-# VAPID_SUBJECT ("mailto:you@example.com", kept secret so the address isn't in the public repo)
+# VAPID_SUBJECT ("mailto:you@example.com", kept secret so the address isn't in the public repo), GATEWAY_SECRET
 #   npm run keys   -> prints fresh values

@@ -1,0 +1,25 @@
+[Unit]
+Description=Bakalari+ gateway (forwards the Worker's requests to schools that block Cloudflare)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/bp-gateway/gateway.py
+EnvironmentFile=/etc/bp-gateway.env
+Restart=always
+RestartSec=5
+# Runs as a throwaway user with no access to the rest of the machine.
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=64M
+
+[Install]
+WantedBy=multi-user.target

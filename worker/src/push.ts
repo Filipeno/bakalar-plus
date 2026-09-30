@@ -2,7 +2,7 @@
 // checks grades and timetable changes on a schedule and pushes what's new. It never sees a password: the app
 // signs in to the school a second time and hands over only that second refresh token.
 
-import { fail, json, noContent, openToken, readSession, schoolBase, sealToken, signSession, identify, type Env } from "./util";
+import { fail, hmac, json, noContent, openToken, readSession, schoolBase, schoolFetch, sealToken, signSession, identify, type Env } from "./util";
 import { sendPush, type PushSubscriptionJSON, type Vapid } from "./webpush";
 
 const vapid = (env: Env): Vapid => ({ publicKey: env.VAPID_PUBLIC, privateJwk: JSON.parse(env.VAPID_PRIVATE_JWK), subject: env.VAPID_SUBJECT });
@@ -10,12 +10,11 @@ const vapid = (env: Env): Vapid => ({ publicKey: env.VAPID_PUBLIC, privateJwk: J
 interface Prefs { grades: boolean; changes: boolean }
 interface UserRow { id: string; school: string; enc_refresh: string; status: string; prefs: string; lang: string; last_check: number; fails: number }
 
-async function bakaToken(base: string, refresh: string): Promise<{ access: string; refresh: string } | "rejected"> {
-  const r = await fetch(`${base}/api/login`, {
+async function bakaToken(env: Env, base: string, refresh: string): Promise<{ access: string; refresh: string } | "rejected"> {
+  const r = await schoolFetch(env, `${base}/api/login`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ client_id: "ANDR", grant_type: "refresh_token", refresh_token: refresh }).toString(),
-    signal: AbortSignal.timeout(15000),
   });
   if (r.status === 400 || r.status === 401) return "rejected";
   if (!r.ok) throw new Error(`login HTTP ${r.status}`);
@@ -32,13 +31,28 @@ function cleanPrefs(p: any): Prefs {
 export async function pushApi(req: Request, url: URL, env: Env): Promise<Response> {
   if (url.pathname === "/push/vapid") return json({ publicKey: env.VAPID_PUBLIC ?? "" });
 
+  // One user's check, called by the cron through the SELF binding (see runChecks).
+  if (url.pathname === "/push/run" && req.method === "POST") {
+    if (req.headers.get("X-BP-Internal") !== (await internalKey(env))) return fail("forbidden", 403);
+    const { id } = (await req.json()) as { id: string };
+    const row = await env.DB.prepare("SELECT * FROM push_users WHERE id = ? AND status = 'active'").bind(id).first<UserRow>();
+    if (!row) return noContent();
+    try {
+      await checkUser(env, row);
+      return noContent();
+    } catch (e) {
+      await failed(env, row, e);
+      return fail("check failed", 500);
+    }
+  }
+
   if (url.pathname === "/push/register" && req.method === "POST") {
     const b = (await req.json().catch(() => null)) as any;
     const base = schoolBase(b?.school ?? "");
     const sub = b?.subscription as PushSubscriptionJSON | undefined;
     if (!base || !b?.refreshToken || !sub?.endpoint?.startsWith("https://") || !sub.keys?.p256dh || !sub.keys?.auth) return fail("bad request", 400);
     // Use the handed-over refresh token right away: proves it works and gives the server its own fresh pair.
-    const t = await bakaToken(base, String(b.refreshToken));
+    const t = await bakaToken(env, base, String(b.refreshToken));
     if (t === "rejected") return fail("expired", 401);
     const who = await identify(env, base, t.access);
     if ("error" in who) return fail(who.error, who.status);
@@ -146,8 +160,8 @@ const TEXT = {
 const iso = (d: Date) => d.toISOString().slice(0, 10);   // UTC date is fine for "is this change still ahead"
 const pragueToday = () => new Date(Date.now() + 2 * 3600_000).toISOString().slice(0, 10);
 
-async function bakaGet(base: string, access: string, path: string): Promise<any> {
-  const r = await fetch(`${base}${path}`, { headers: { Authorization: `Bearer ${access}`, Accept: "application/json" }, signal: AbortSignal.timeout(20000) });
+async function bakaGet(env: Env, base: string, access: string, path: string): Promise<any> {
+  const r = await schoolFetch(env, `${base}${path}`, { headers: { Authorization: `Bearer ${access}`, Accept: "application/json" } });
   if (!r.ok) throw new Error(`${path} HTTP ${r.status}`);
   return r.json();
 }
@@ -195,7 +209,7 @@ async function checkUser(env: Env, row: UserRow): Promise<void> {
   const T = TEXT[lang];
   const prefs = cleanPrefs(JSON.parse(row.prefs || "{}"));
   const refresh = await openToken(env, row.enc_refresh, row.id);
-  const t = await bakaToken(row.school, refresh);
+  const t = await bakaToken(env, row.school, refresh);
   if (t === "rejected") {
     await env.DB.prepare("UPDATE push_users SET status = 'relogin', last_check = ? WHERE id = ?").bind(Date.now(), row.id).run();
     await notify(env, row.id, { title: T.relogin, body: T.reloginBody, url: "/#/settings", tag: "relogin" });
@@ -208,9 +222,9 @@ async function checkUser(env: Env, row: UserRow): Promise<void> {
   const next = new Date(`${today}T12:00:00Z`);
   next.setUTCDate(next.getUTCDate() + 7);
   const [marks, cur, nxt] = await Promise.all([
-    prefs.grades ? bakaGet(row.school, t.access, "/api/3/marks") : Promise.resolve(null),
-    prefs.changes ? bakaGet(row.school, t.access, "/api/3/timetable/actual") : Promise.resolve(null),
-    prefs.changes ? bakaGet(row.school, t.access, `/api/3/timetable/actual?date=${iso(next)}`) : Promise.resolve(null),
+    prefs.grades ? bakaGet(env, row.school, t.access, "/api/3/marks") : Promise.resolve(null),
+    prefs.changes ? bakaGet(env, row.school, t.access, "/api/3/timetable/actual") : Promise.resolve(null),
+    prefs.changes ? bakaGet(env, row.school, t.access, `/api/3/timetable/actual?date=${iso(next)}`) : Promise.resolve(null),
   ]);
 
   const st = await env.DB.prepare("SELECT marks, changes FROM push_state WHERE user_id = ?").bind(row.id).first<{ marks: string; changes: string }>();
@@ -240,9 +254,18 @@ async function checkUser(env: Env, row: UserRow): Promise<void> {
   ]);
 }
 
+const internalKey = (env: Env) => hmac(env.SESSION_SECRET, "push-run");
+
+async function failed(env: Env, row: UserRow, e: unknown) {
+  console.warn(`check failed (${new URL(row.school).host}):`, (e as Error).message);
+  // Back off: a school that's down is retried at the next interval, not every run.
+  await env.DB.prepare("UPDATE push_users SET last_check = ?, fails = fails + 1 WHERE id = ?").bind(Date.now(), row.id).run();
+}
+
 /**
- * One cron run: the users whose last check is oldest, a small batch at a time (Workers limit how many requests one
- * run may make), one after another with a short gap. One user's failure never stops the others.
+ * One cron run: the users whose last check is oldest, a batch at a time, one after another with a short gap.
+ * With the SELF binding every check is its own invocation with its own CPU budget (a check costs ~10 ms, the
+ * whole free-plan allowance of one invocation); the cron itself only waits. One user's failure never stops the others.
  */
 export async function runChecks(env: Env): Promise<{ checked: number; failed: number }> {
   if (!env.VAPID_PUBLIC || !env.TOKEN_KEY) return { checked: 0, failed: 0 };
@@ -251,17 +274,23 @@ export async function runChecks(env: Env): Promise<{ checked: number; failed: nu
   const { results } = await env.DB.prepare(
     "SELECT * FROM push_users WHERE status = 'active' AND last_check < ? ORDER BY last_check LIMIT ?",
   ).bind(Date.now() - every, batch).all<UserRow>();
-  let failed = 0;
+  let bad = 0;
+  const key = env.SELF ? await internalKey(env) : "";
   for (const row of results) {
     try {
-      await checkUser(env, row);
+      if (env.SELF) {
+        const r = await env.SELF.fetch("https://self/push/run", {
+          method: "POST", headers: { "X-BP-Internal": key, "Content-Type": "application/json" }, body: JSON.stringify({ id: row.id }),
+        });
+        if (!r.ok) bad++;
+      } else {
+        await checkUser(env, row);
+      }
     } catch (e) {
-      failed++;
-      console.warn(`check failed (${new URL(row.school).host}):`, (e as Error).message);
-      // Back off: a school that's down is retried later, not every run.
-      await env.DB.prepare("UPDATE push_users SET last_check = ?, fails = fails + 1 WHERE id = ?").bind(Date.now(), row.id).run();
+      bad++;
+      await failed(env, row, e);
     }
     await new Promise((r) => setTimeout(r, 300));
   }
-  return { checked: results.length, failed };
+  return { checked: results.length, failed: bad };
 }

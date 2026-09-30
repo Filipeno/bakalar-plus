@@ -10,6 +10,9 @@ export interface Env {
   VAPID_SUBJECT: string;        // "mailto:…" (push services contact this if something misbehaves)
   CHECK_INTERVAL_MIN?: string;  // how often each user is checked (default 10)
   CHECK_BATCH?: string;         // users per cron run (default 6; each costs ~5 subrequests)
+  GATEWAY?: Fetcher;            // Workers VPC service -> gateway/gateway.py on a machine with a Czech connection
+  GATEWAY_SECRET?: string;
+  SELF?: Fetcher;               // service binding to this Worker: each user's check runs as its own invocation
 }
 
 export const CORS = {
@@ -67,10 +70,40 @@ export function schoolBase(input: string): string | null {
   } catch { return null; }
 }
 
+// ---- reaching schools: some school firewalls drop Cloudflare's traffic; those go through the gateway ----
+
+const GW_CACHE = (host: string) => new Request(`https://bp-cache.invalid/gateway?h=${encodeURIComponent(host)}`);
+
+async function gatewayFetch(env: Env, url: string, init: RequestInit): Promise<Response> {
+  const headers = new Headers(init.headers);
+  headers.set("X-BP-Gateway", env.GATEWAY_SECRET ?? "");
+  return env.GATEWAY!.fetch(`http://127.0.0.1:8770/fetch?u=${encodeURIComponent(url)}`, {
+    method: init.method, headers, body: init.body, signal: AbortSignal.timeout(30_000),
+  });
+}
+
+/**
+ * fetch() to a school. Direct first; if the school doesn't answer Cloudflare at all (timeout / connection
+ * refused), use the gateway and remember that for a day, so later calls go straight there.
+ */
+export async function schoolFetch(env: Env, url: string, init: RequestInit = {}): Promise<Response> {
+  const host = new URL(url).host;
+  const hasGw = !!env.GATEWAY && !!env.GATEWAY_SECRET;
+  if (hasGw && (await caches.default.match(GW_CACHE(host)))) return gatewayFetch(env, url, init);
+  try {
+    return await fetch(url, { ...init, signal: init.signal ?? AbortSignal.timeout(8_000) });
+  } catch (e) {
+    if (!hasGw) throw e;
+    const r = await gatewayFetch(env, url, init);
+    if (r.status !== 502) await caches.default.put(GW_CACHE(host), new Response("1", { headers: { "Cache-Control": "max-age=86400" } }));
+    return r;
+  }
+}
+
 /** Ask the school who owns this access token; build the session identity from it. */
 export async function identify(env: Env, base: string, accessToken: string): Promise<{ s: Session; hasClass: boolean } | { error: string; status: number }> {
-  const r = await fetch(`${base}/api/3/user`, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }, redirect: "manual", signal: AbortSignal.timeout(15000),
+  const r = await schoolFetch(env, `${base}/api/3/user`, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }, redirect: "manual",
   });
   if (r.status === 401) return { error: "expired", status: 401 };
   if (r.status !== 200) return { error: "school unreachable", status: 502 };

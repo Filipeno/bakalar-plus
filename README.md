@@ -35,10 +35,10 @@ zveřejňuje veřejný rozvrh (většina škol).
 2. Otevři ho a povol instalaci z tohoto zdroje (Android se zeptá sám).
 3. Pro upozornění povol notifikace, pro widget: dlouze podrž plochu → Widgety → Bakaláři+.
 
-Aktualizace: stáhni novější APK a nainstaluj přes starou verzi (data zůstanou).
+Aktualizace: appka sama hlásí novou verzi (Nastavení → Hledat aktualizace), nebo stáhni novější APK a nainstaluj přes starou (data zůstanou).
 
 ### iPhone a počítač
-Webová verze běží v prohlížeči (adresa je v popisu releasu). Na iPhonu: Safari → Sdílet → *Přidat na plochu*.
+Webová verze: **https://bakalar-plus.bakalar-plus-worker.workers.dev** (na počítači stačí otevřít v prohlížeči). Na iPhonu otevři adresu v Safari: Safari → Sdílet → *Přidat na plochu*.
 **Upozornění na iPhonu** (iOS 16.4+) fungují jen v appce otevřené z plochy: Nastavení → Upozornění →
 *Zapnout upozornění*, přihlásit se ještě jednou a povolit oznámení. Widget umí jen Android.
 

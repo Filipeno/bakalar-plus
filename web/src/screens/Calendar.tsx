@@ -31,7 +31,14 @@ export function Calendar() {
   const [sel, setSel] = useState(route.value.q.d ?? td);
   const [edit, setEdit] = useState<Partial<ClassEntry> | null>(null);
   const [open, setOpen] = useState<Item | null>(null);
-  const [filt, setFilt] = useState<Record<Source, boolean>>({ school: true, hw: true, class: true });
+  const [filt, setFiltState] = useState<Record<Source, boolean>>(() => {
+    try { return { school: true, hw: true, class: true, ...JSON.parse(localStorage.getItem("bp.calFilter") || "{}") }; } catch { return { school: true, hw: true, class: true }; }
+  });
+  const setFilt = (f: Record<Source, boolean> | ((p: Record<Source, boolean>) => Record<Source, boolean>)) => setFiltState((p) => {
+    const n = typeof f === "function" ? f(p) : f;
+    try { localStorage.setItem("bp.calFilter", JSON.stringify(n)); } catch { /* ignore */ }
+    return n;
+  });
 
   const items = useMemo(() => {
     const out: Item[] = [];

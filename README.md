@@ -85,7 +85,7 @@ npx wrangler d1 create bakalar-plus         # database_id vlož do wrangler.toml
 npm run db:init                              # tabulky (i po aktualizaci, je to idempotentní)
 npm run keys                                 # vypíše SESSION_SECRET, TOKEN_KEY, VAPID_PUBLIC, VAPID_PRIVATE_JWK
 npx wrangler secret put SESSION_SECRET       # a stejně TOKEN_KEY, VAPID_PUBLIC, VAPID_PRIVATE_JWK (vlož hodnotu z npm run keys)
-# ve wrangler.toml nastav VAPID_SUBJECT = "mailto:tvuj@email" (push služby ho použijí, kdyby byl problém)
+npx wrangler secret put VAPID_SUBJECT        # "mailto:tvuj@email" (push služby ho použijí, kdyby byl problém)
 cd ../web && npm run build && cd ../worker && npm run deploy
 ```
 - **VAPID klíče** (`npm run keys`) jsou identita serveru u push služeb (Apple, Google, Mozilla). Když je změníš,

@@ -12,7 +12,7 @@ run_worker_first = ["/relay", "/cal/*", "/push/*", "/me"]
 [[d1_databases]]
 binding = "DB"
 database_name = "bakalar-plus"
-database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
+database_id = "f89b8ade-c7db-43d8-8772-0eed32ac1812"
 
 # Push checks: every minute the users whose last check is older than CHECK_INTERVAL_MIN get checked,
 # CHECK_BATCH at a time (the free plan allows 50 outgoing requests per run; one user needs about 5).
@@ -22,7 +22,7 @@ crons = ["* * * * *"]
 [vars]
 CHECK_INTERVAL_MIN = "10"
 CHECK_BATCH = "6"
-VAPID_SUBJECT = "mailto:REPLACE_WITH_YOUR_EMAIL"
 
-# Secrets (never in this file), see README: SESSION_SECRET, TOKEN_KEY, VAPID_PUBLIC, VAPID_PRIVATE_JWK
+# Secrets (never in this file), see README: SESSION_SECRET, TOKEN_KEY, VAPID_PUBLIC, VAPID_PRIVATE_JWK,
+# VAPID_SUBJECT ("mailto:you@example.com", kept secret so the address isn't in the public repo)
 #   npm run keys   -> prints fresh values

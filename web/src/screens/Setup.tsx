@@ -11,20 +11,28 @@ import { checkForUpdate, installUpdate, update, updating } from "../lib/update";
 import { clearCache, expired, patchSettings, readCache, settings, user, writeCache } from "../lib/store";
 import type { Target } from "../lib/model";
 import { Icon } from "../ui/icons";
-import { errorText, IosInstall, Page, Row, Section, Segmented, Sheet, Spinner, Switch } from "../ui/kit";
+import { errorText, IosInstall, Page, Row, Section, Segmented, Sheet, Spinner, SwitchRow } from "../ui/kit";
 import { go, route, useBack } from "../ui/router";
 import { TargetPicker } from "../ui/picker";
+import { ACCENTS, MAX_TABS, patchPrefs, prefs, SECTIONS, type CardKey } from "../ui/prefs";
+import { available, SECTION_META, tabSections } from "../ui/sections";
+import type { TKey } from "../lib/i18n";
 
 const REPO = "https://github.com/Filipeno/bakalar-plus";
 declare const __APP_VERSION__: string;
 
 // ---------------- onboarding ----------------
 
+function StepBack({ onClick }: { onClick: () => void }) {
+  return <button class="welcome-back" onClick={onClick} aria-label={t("back")}><Icon name="caret-left" size={22} /><span>{t("back")}</span></button>;
+}
+
 export function Welcome() {
   // "Change school" starts at the picker; reopened mid-setup with a school already picked: continue at the login step.
   const picked = settings.value.school?.url;
   const [step, setStep] = useState<"hello" | "school" | "login" | "class">(route.value.q.step === "school" ? "school" : picked ? "login" : "hello");
   const [dir, setDir] = useState<Directory | null>(() => (picked ? readCache<Directory>(`dir:${picked}`)?.v ?? null : null));
+  const [cls, setCls] = useState<Target | null>(settings.value.myTarget);
   const prev = { hello: "hello", school: "hello", login: "school", class: "login" } as const;
   useBack(step !== "hello", () => setStep(prev[step]), step);
 
@@ -33,46 +41,52 @@ export function Welcome() {
   if (step === "hello") {
     return (
       <div class="welcome">
-        <div class="welcome-art" aria-hidden="true">
-          <div class="wa-card a"><i /><i /><i /></div>
-          <div class="wa-card b"><i /><i /><i /></div>
-          <div class="wa-card c"><i /><i /></div>
-        </div>
-        <h1>{t("appName")}</h1>
-        <h2>{t("welcomeTitle")}</h2>
-        <p>{t("welcomeText")}</p>
-        <div class="welcome-lang">
-          <Segmented small value={settings.value.lang} onChange={(v) => patchSettings({ lang: v })}
+        <div class="welcome-hero">
+          <div class="logo" aria-hidden="true">B+</div>
+          <h1>{t("welcomeTitle")}</h1>
+          <p class="lead">{t("welcomeText")}</p>
+          <Segmented small fit value={settings.value.lang} onChange={(v) => patchSettings({ lang: v })}
             options={[{ v: "auto", label: "Auto" }, { v: "cs", label: "Čeština" }, { v: "en", label: "English" }]} />
+          <IosInstall />
+          <button class="btn block" style={{ marginTop: "12px" }} onClick={() => setStep("school")}>{t("start")}</button>
+          <div class="fine">{t("unofficial")}</div>
         </div>
-        <IosInstall />
-        <button class="btn block big" onClick={() => setStep("school")}>{t("start")}</button>
       </div>
     );
   }
   if (step === "school") {
     return (
-      <Page title={t("pickSchool")}>
+      <div class="welcome">
+        <StepBack onClick={() => setStep("hello")} />
+        <h2>{t("pickSchool")}</h2>
+        <p class="sub">{t("pickSchoolSub")}</p>
         <SchoolPicker onPicked={(d) => { setDir(d); setStep("login"); }} />
-      </Page>
+      </div>
     );
   }
   if (step === "login") {
     return (
-      <Page title={t("loginTitle")} sub={settings.value.school?.name}>
+      <div class="welcome">
+        <StepBack onClick={() => setStep("school")} />
+        <h2>{t("loginTitle")}</h2>
+        <p class="sub">{settings.value.school?.name}</p>
         <LoginForm onDone={finish} />
-        <button class="btn block ghost" onClick={() => (dir ? setStep("class") : finish())}>{t("skipLogin")}</button>
-      </Page>
+        <button class="btn block ghost" style={{ marginTop: "8px" }} onClick={() => (dir ? setStep("class") : finish())}>{t("skipLogin")}</button>
+      </div>
     );
   }
   return (
-    <Page title={t("pickClass")} sub={t("pickClassHint")}>
-      <div class="class-grid">
+    <div class="welcome">
+      <StepBack onClick={() => setStep("login")} />
+      <h2>{t("pickClass")}</h2>
+      <p class="sub">{t("pickClassHint")}</p>
+      <div class="chips">
         {dir?.classes.map((c) => (
-          <button class="class-chip" onClick={() => { patchSettings({ myTarget: c }); finish(); }}>{c.name}</button>
+          <button class={`chip big ${cls?.id === c.id ? "on" : ""}`} onClick={() => setCls(c)}>{c.name}</button>
         ))}
       </div>
-    </Page>
+      <button class="btn block" style={{ marginTop: "24px" }} disabled={!cls} onClick={() => { patchSettings({ myTarget: cls }); finish(); }}>{t("done")}</button>
+    </div>
   );
 }
 
@@ -119,7 +133,7 @@ function SchoolPicker({ onPicked }: { onPicked: (dir: Directory | null) => void 
       <form class="form" onSubmit={(e) => { e.preventDefault(); url && choose(new URL(normalizeSchoolUrl(url)).host, url); }}>
         <label>{t("schoolUrl")}<input inputMode="url" autoCapitalize="off" autoCorrect="off" placeholder="bakalari.skola.cz" value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} /></label>
         <p class="hint">{t("schoolUrlHint")}</p>
-        {err && <p class="error-text">{err}</p>}
+        {err && <p class="hint err-text">{err}</p>}
         <button class="btn block" disabled={busy}>{busy ? <Spinner small /> : t("continue")}</button>
         <button type="button" class="btn block ghost" onClick={() => setManual(false)}>{t("back")}</button>
       </form>
@@ -130,15 +144,19 @@ function SchoolPicker({ onPicked }: { onPicked: (dir: Directory | null) => void 
     const list = (schools ?? []).filter((s) => !filter || fold(s.name).includes(fold(filter)));
     return (
       <>
-        <button class="link back-link" onClick={() => setTown(null)}><Icon name="back" size={16} />{t("schoolsIn", { town })}</button>
+        <button class="link" style={{ marginBottom: "10px" }} onClick={() => setTown(null)}><Icon name="caret-left" size={14} />{t("schoolsIn", { town })}</button>
         {(schools?.length ?? 0) > 8 && (
-          <div class="search-box"><Icon name="search" size={18} /><input type="search" value={filter} placeholder={t("search")} onInput={(e) => setFilter((e.target as HTMLInputElement).value)} /></div>
+          <div class="search"><Icon name="magnifying-glass" size={18} /><input type="search" value={filter} placeholder={t("search")} onInput={(e) => setFilter((e.target as HTMLInputElement).value)} /></div>
         )}
         {!schools && !err && <div class="center-box"><Spinner /></div>}
-        {busy && <div class="center-box"><Spinner /> <span class="muted">{t("checking")}</span></div>}
-        {err && <p class="error-text">{err}</p>}
-        <div class="card-list">
-          {list.map((s) => <Row title={s.name} sub={s.url.replace(/^https:\/\//, "")} chevron onClick={() => !busy && choose(s.name, s.url)} />)}
+        {busy && <div class="center-box"><Spinner /> <span class="hint">{t("checking")}</span></div>}
+        {err && <p class="hint err-text">{err}</p>}
+        <div class="pick-list">
+          {list.map((s) => (
+            <button class={`pick ${settings.value.school?.url === normalizeSchoolUrl(s.url) ? "on" : ""}`} onClick={() => !busy && choose(s.name, s.url)}>
+              <span class="grow"><b>{s.name}</b><small>{s.url.replace(/^https:\/\//, "")}</small></span>
+            </button>
+          ))}
         </div>
       </>
     );
@@ -146,15 +164,23 @@ function SchoolPicker({ onPicked }: { onPicked: (dir: Directory | null) => void 
 
   return (
     <>
-      <div class="search-box big">
-        <Icon name="search" size={20} />
+      <div class="search">
+        <Icon name="magnifying-glass" size={18} />
         <input type="search" autoFocus placeholder={t("townSearch")} value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
       </div>
-      {err && <p class="error-text">{err}</p>}
-      <div class="card-list">
-        {towns.map((tw) => <Row icon="pin" title={tw.name} right={<span class="muted small">{tw.count}</span>} chevron onClick={() => openTown(tw.name)} />)}
+      {err && <p class="hint err-text" style={{ marginTop: "8px" }}>{err}</p>}
+      <div class="pick-list">
+        {towns.map((tw) => (
+          <button class="pick" onClick={() => openTown(tw.name)}>
+            <Icon name="map-pin" size={18} />
+            <span class="grow"><b>{tw.name}</b></span>
+            <small>{tw.count}</small>
+            <Icon name="caret-right" size={16} />
+          </button>
+        ))}
+        {q.trim().length > 1 && !towns.length && !err && <p class="hint">{t("noSchoolsFound")}</p>}
       </div>
-      <button class="btn block ghost" onClick={() => setManual(true)}>{t("manualUrl")}</button>
+      <button class="btn block ghost" style={{ marginTop: "10px" }} onClick={() => setManual(true)}>{t("manualUrl")}</button>
     </>
   );
 }
@@ -181,12 +207,19 @@ export function LoginForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form class="form" onSubmit={submit}>
-      <p class="hint">{t("loginText")}</p>
-      {!isAndroid && school && usesRelay(school) && <p class="banner soft">{t("loginRelayNote")}</p>}
-      {!isAndroid && <p class="hint">{t("loginPushNote")}</p>}
-      <label>{t("username")}<input autoComplete="username" autoCapitalize="off" autoCorrect="off" required value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} /></label>
-      <label>{t("password")}<input type="password" autoComplete="current-password" required value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} /></label>
-      {err && <p class="error-text">{err}</p>}
+      <input autoComplete="username" autoCapitalize="off" autoCorrect="off" required placeholder={t("username")} aria-label={t("username")}
+        value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} />
+      <input type="password" autoComplete="current-password" required placeholder={t("password")} aria-label={t("password")}
+        value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} />
+      <div class="lock-note" style={{ margin: "4px 0" }}>
+        <Icon name="lock-key" size={18} />
+        <span>
+          {t("loginText")}
+          {!isAndroid && school && usesRelay(school) && <><br />{t("loginRelayNote")}</>}
+          {!isAndroid && <><br />{t("loginPushNote")}</>}
+        </span>
+      </div>
+      {err && <p class="hint err-text">{err}</p>}
       <button class="btn block" disabled={busy}>{busy ? <Spinner small /> : t("signIn")}</button>
     </form>
   );
@@ -220,31 +253,23 @@ export function Settings() {
 
   return (
     <Page title={t("settings")} backable>
-      <Section title={t("school")}>
-        <div class="card-list">
-          <Row icon="home" title={s.school?.name ?? "—"} sub={s.school?.url.replace(/^https:\/\//, "")}
-            right={<button class="btn small ghost" onClick={() => { patchSettings({ onboarded: false }); go("/welcome", { step: "school" }, true); }}>{t("changeSchool")}</button>} />
-        </div>
-      </Section>
-
-      <Section title={t("account")}>
-        <div class="card-list">
-          {user.value ? (
-            <Row icon="user" title={user.value.name} sub={[user.value.classAbbrev, user.value.schoolName].filter(Boolean).join(" · ")}
-              right={<button class="btn small ghost" onClick={logout}><Icon name="logout" size={16} />{t("logout")}</button>} />
-          ) : (
-            <Row icon="user" title={t("loginAction")} chevron onClick={() => go("/login")} />
-          )}
-          {user.value && <DeleteDataRow onDone={logout} />}
-          {!user.value && s.publicOk && (
-            <Row icon="users" title={t("myClass")} sub={s.myTarget?.name ?? "—"} chevron onClick={() => setPicker(true)} />
-          )}
+      <Section title={t("appearance")}>
+        <div class="stack">
+          <div class="row">
+            <span class="row-main"><span class="row-title">{t("language")}</span></span>
+            <Segmented small value={s.lang} onChange={(v) => patchSettings({ lang: v })} options={[{ v: "auto", label: "Auto" }, { v: "cs", label: "CS" }, { v: "en", label: "EN" }]} />
+          </div>
+          <div class="row" style={{ flexDirection: "column", alignItems: "stretch", gap: "8px" }}>
+            <span class="row-title">{t("themeLabel")}</span>
+            <Segmented value={s.theme} onChange={(v) => patchSettings({ theme: v })} options={[{ v: "auto", label: t("themeAuto") }, { v: "dark", label: t("themeDark") }, { v: "light", label: t("themeLight") }]} />
+          </div>
+          <Row big icon="sliders-horizontal" title={t("customize")} sub={t("customizeSub")} chevron onClick={() => go("/customize")} />
         </div>
       </Section>
 
       {!isAndroid && <WebPush />}
       {isAndroid && <Section title={t("notifications")}>
-        <div class="card-list">
+        <div class="stack">
           <SwitchRow label={t("notifyChanges")} v={s.notify.changes} on={(v) => setNotify({ changes: v })} />
           {user.value && <SwitchRow label={t("notifyGrades")} v={s.notify.grades} on={(v) => setNotify({ grades: v })} />}
           {user.value && <SwitchRow label={t("notifyHomework")} v={s.notify.homework} on={(v) => setNotify({ homework: v })} />}
@@ -253,33 +278,50 @@ export function Settings() {
           {s.notify.evening && (
             <div class="row">
               <span class="row-main"><span class="row-title">{t("eveningAt")}</span></span>
-              <select value={s.notify.eveningHour} onChange={(e) => setNotify({ eveningHour: +(e.target as HTMLSelectElement).value })}>
+              <select class="input" style={{ width: "auto", padding: "6px 10px" }} value={s.notify.eveningHour} onChange={(e) => setNotify({ eveningHour: +(e.target as HTMLSelectElement).value })}>
                 {[16, 17, 18, 19, 20, 21].map((h) => <option value={h}>{h}:00</option>)}
               </select>
             </div>
           )}
         </div>
-        <p class="hint">{t("widgetInfo")}</p>
+        <p class="hint" style={{ marginTop: "8px" }}>{t("widgetInfo")}</p>
       </Section>}
 
-      <Section title={t("language")}>
-        <Segmented value={s.lang} onChange={(v) => patchSettings({ lang: v })} options={[{ v: "auto", label: "Auto" }, { v: "cs", label: "Čeština" }, { v: "en", label: "English" }]} />
+      <Section title={t("school")}>
+        <Row icon="house" title={s.school?.name ?? "—"} sub={s.school?.url.replace(/^https:\/\//, "")}
+          right={<button class="btn small line" onClick={() => { patchSettings({ onboarded: false }); go("/welcome", { step: "school" }, true); }}>{t("changeSchool")}</button>} />
       </Section>
-      <Section title={t("appearance")}>
-        <Segmented value={s.theme} onChange={(v) => patchSettings({ theme: v })} options={[{ v: "auto", label: t("themeAuto") }, { v: "light", label: t("themeLight") }, { v: "dark", label: t("themeDark") }]} />
+
+      <Section title={t("account")}>
+        <div class="stack">
+          {user.value ? (
+            <div class="card">
+              <div style={{ fontSize: "14px", fontWeight: 500 }}>{user.value.name}</div>
+              <div class="hint">{[user.value.classAbbrev, user.value.schoolName].filter(Boolean).join(" · ")}</div>
+            </div>
+          ) : (
+            <Row icon="sign-in" title={t("loginAction")} sub={t("unlockHint")} chevron onClick={() => go("/login")} />
+          )}
+          {!user.value && s.publicOk && (
+            <Row icon="users" title={t("myClass")} sub={s.myTarget?.name ?? "—"} chevron onClick={() => setPicker(true)} />
+          )}
+          {user.value && <button class="btn block line" onClick={logout}><Icon name="sign-out" size={18} />{t("logout")}</button>}
+          {user.value && <DeleteData onDone={logout} />}
+        </div>
       </Section>
 
       <Section title={t("about")}>
-        <div class="card-list">
-          <Row icon="github" title={t("sourceCode")} chevron onClick={() => (native ? native.sync("openUrl", { url: REPO }) : open(REPO, "_blank"))} />
+        <div class="stack">
+          <Row icon="github-logo" title={t("sourceCode")} chevron onClick={() => (native ? native.sync("openUrl", { url: REPO }) : open(REPO, "_blank"))} />
           {isAndroid && (update.value
-            ? <Row icon="refresh" title={t("updateAvail", { v: update.value.latest })} onClick={() => updating.value !== "busy" && installUpdate()}
+            ? <Row icon="arrows-clockwise" title={t("updateAvail", { v: update.value.latest })} onClick={() => updating.value !== "busy" && installUpdate()}
                 right={<span class="link">{updating.value === "busy" ? t("updateBusy") : updating.value === "permission" ? t("updateAllowShort") : updating.value === "error" ? t("updateFail") : t("updateNow")}</span>} />
-            : <Row icon="refresh" title={t("updateCheck")} onClick={async () => { setUpd(t("checking")); const i = await checkForUpdate(true); setUpd(i ? (i.newer ? "" : t("updateLatest")) : t("offline")); }} right={upd && <span class="muted small">{upd}</span>} />)}
-          <Row icon="trash" title={t("clearCache")} onClick={() => { clearCache(); setMsg(t("cacheCleared")); }} right={msg && <span class="muted small">{msg}</span>} />
+            : <Row icon="arrows-clockwise" title={t("updateCheck")} onClick={async () => { setUpd(t("checking")); const i = await checkForUpdate(true); setUpd(i ? (i.newer ? "" : t("updateLatest")) : t("offline")); }} right={upd && <span class="hint">{upd}</span>} />)}
+          <Row icon="trash" title={t("clearCache")} onClick={() => { clearCache(); setMsg(t("cacheCleared")); }} right={msg && <span class="hint">{msg}</span>} />
         </div>
-        <p class="hint">{t("privacy")}</p>
-        <p class="hint center">{t("appName")} · {t("version", { v: __APP_VERSION__ })}</p>
+        <p class="hint" style={{ marginTop: "10px" }}>{t("privacy")}</p>
+        <p class="hint">{t("unofficial")}</p>
+        <p class="hint center" style={{ marginTop: "10px" }}>{t("appName")} · {t("version", { v: __APP_VERSION__ })}</p>
       </Section>
       <TargetPicker open={picker} onClose={() => setPicker(false)} kinds={["class"]} title={t("myClass")}
         onPick={(x) => x !== "my" && patchSettings({ myTarget: x as Target })} />
@@ -287,12 +329,74 @@ export function Settings() {
   );
 }
 
-function SwitchRow({ label, v, on }: { label: string; v: boolean; on: (v: boolean) => void }) {
+// ---------------- customize ----------------
+
+export function Customize() {
+  const p = prefs.value;
+  const av = available();
+  const tabs = tabSections();
+  const move = <T,>(arr: T[], i: number, d: number) => { const a = [...arr], j = i + d; if (j < 0 || j >= a.length) return a; [a[i], a[j]] = [a[j], a[i]]; return a; };
+  const toggleTab = (k: (typeof SECTIONS)[number]) => {
+    if (p.tabs.includes(k)) { if (p.tabs.length > 1) patchPrefs({ tabs: p.tabs.filter((z) => z !== k) }); }
+    else if (p.tabs.length < MAX_TABS) patchPrefs({ tabs: [...p.tabs, k] });
+  };
+  const CARD_LABEL: Record<CardKey, TKey> = { changes: "cardChanges", hw: "homework", events: "tabCalendar", grades: "newGrades" };
+
   return (
-    <div class="row">
-      <span class="row-main"><span class="row-title">{label}</span></span>
-      <Switch checked={v} onChange={on} label={label} />
-    </div>
+    <Page title={t("customize")} sub={t("settings")} backable>
+      <div class="label">{t("cTabs")}</div>
+      <p class="hint" style={{ margin: "4px 0 8px" }}>{t("cTabsSub")}</p>
+      <div class="tab-preview" aria-hidden="true">
+        {tabs.map((k, i) => <div class={i === 0 ? "on" : ""}><Icon name={SECTION_META[k].icon} size={20} fill={i === 0} /><span>{t(SECTION_META[k].label)}</span></div>)}
+        <div><Icon name="dots-three-outline" size={20} /><span>{t("tabMore")}</span></div>
+      </div>
+      <div class="stack tight">
+        {SECTIONS.map((k) => {
+          const on = p.tabs.includes(k), i = p.tabs.indexOf(k);
+          return (
+            <div class="cu-row">
+              <button onClick={() => toggleTab(k)} aria-pressed={on} class={on || p.tabs.length < MAX_TABS ? "" : "dim"}>
+                <Icon name={SECTION_META[k].icon} size={20} class="sect-icon" />
+                <span>{t(SECTION_META[k].label)}{!av.includes(k) && <small class="hint" style={{ display: "block" }}>{k === "where" || k === "compare" ? t("needsPublic") : t("needsLogin")}</small>}</span>
+                <Icon name={on ? "check-circle" : "circle"} size={20} fill={on} class="check" />
+              </button>
+              <button class={`arrow ${on ? "" : "hidden"}`} onClick={() => patchPrefs({ tabs: move(p.tabs, i, -1) })} aria-label={t("moveUp")}><Icon name="arrow-up" size={18} /></button>
+              <button class={`arrow ${on ? "" : "hidden"}`} onClick={() => patchPrefs({ tabs: move(p.tabs, i, 1) })} aria-label={t("moveDown")}><Icon name="arrow-down" size={18} /></button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div class="label" style={{ margin: "20px 0 8px" }}>{t("cHome")}</div>
+      <div class="stack tight">
+        {p.cards.map((c, i) => (
+          <div class="cu-row">
+            <button onClick={() => patchPrefs({ cards: p.cards.map((z, j) => (j === i ? { ...z, on: !z.on } : z)) })} aria-pressed={c.on}>
+              <Icon name={c.on ? "check-circle" : "circle"} size={20} fill={c.on} class="check" />
+              <span>{t(CARD_LABEL[c.k])}</span>
+            </button>
+            <button class="arrow" onClick={() => patchPrefs({ cards: move(p.cards, i, -1) })} aria-label={t("moveUp")}><Icon name="arrow-up" size={18} /></button>
+            <button class="arrow" onClick={() => patchPrefs({ cards: move(p.cards, i, 1) })} aria-label={t("moveDown")}><Icon name="arrow-down" size={18} /></button>
+          </div>
+        ))}
+      </div>
+
+      <div class="label" style={{ margin: "20px 0 8px" }}>{t("cAccent")}</div>
+      <div class="swatches">
+        {ACCENTS.map((a) => (
+          <button class={`swatch-btn ${p.accent === a.k ? "on" : ""}`} style={{ background: `oklch(var(--subj-l) .13 ${a.h})` }}
+            onClick={() => patchPrefs({ accent: a.k })} aria-label={a.k} aria-pressed={p.accent === a.k} />
+        ))}
+      </div>
+
+      <div class="label" style={{ margin: "20px 0 8px" }}>{t("cDens")}</div>
+      <Segmented value={p.density} onChange={(v) => patchPrefs({ density: v })} options={[{ v: "comfort", label: t("densComfort") }, { v: "compact", label: t("densCompact") }]} />
+
+      <div class="label" style={{ margin: "20px 0 8px" }}>{t("cStart")}</div>
+      <div class="chips">
+        {tabs.map((k) => <button class={`chip ${p.start === k ? "on" : ""}`} onClick={() => patchPrefs({ start: k })}>{t(SECTION_META[k].label)}</button>)}
+      </div>
+    </Page>
   );
 }
 
@@ -304,7 +408,7 @@ function WebPush() {
   const [form, setForm] = useState(false);
   const [u, setU] = useState("");
   const [p, setP] = useState("");
-  const [prefs, setPrefs] = useState<push.PushPrefs>({ grades: true, changes: true });
+  const [prefs_, setPrefs] = useState<push.PushPrefs>({ grades: true, changes: true });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -320,47 +424,47 @@ function WebPush() {
     e.preventDefault();
     setBusy(true); setMsg("");
     try {
-      await push.enablePush(school, u.trim(), p, prefs);     // asks for permission first, inside this gesture
+      await push.enablePush(school, u.trim(), p, prefs_);     // asks for permission first, inside this gesture
       setP(""); setForm(false);
-      setSt({ registered: true, status: "active", prefs });
+      setSt({ registered: true, status: "active", prefs: prefs_ });
     } catch (err) {
       const c = (err as push.PushError).code;
       setMsg(c === "denied" ? t("pushDenied") : c === "bad_login" ? t("badLogin") : t("pushFailed", { e: c ?? (err as Error).message }));
     }
     setBusy(false);
   };
-  const changePrefs = (x: Partial<push.PushPrefs>) => { const n = { ...prefs, ...x }; setPrefs(n); if (st?.registered) push.setPushPrefs(n); };
+  const changePrefs = (x: Partial<push.PushPrefs>) => { const n = { ...prefs_, ...x }; setPrefs(n); if (st?.registered) push.setPushPrefs(n); };
 
   return (
     <Section title={t("pushTitle")}>
       {!push.pushSupported() && !iosNeedsInstall && <p class="hint">{t("pushUnsupported")}</p>}
-      {iosNeedsInstall && <p class="banner soft">{t("pushIosHint")}</p>}
-      {blocked && <p class="banner warn">{t("pushDenied")}</p>}
-      {st?.status === "relogin" && <p class="banner warn">{t("pushRelogin")}</p>}
+      {iosNeedsInstall && <div class="banner accent"><Icon name="export" size={18} /><span class="grow">{t("pushIosHint")}</span></div>}
+      {blocked && <div class="banner warn">{t("pushDenied")}</div>}
+      {st?.status === "relogin" && <div class="banner warn">{t("pushRelogin")}</div>}
       {push.pushSupported() && !iosNeedsInstall && (
-        <div class="card-list">
-          <SwitchRow label={t("notifyChanges")} v={prefs.changes} on={(v) => changePrefs({ changes: v })} />
-          {user.value && <SwitchRow label={t("notifyGrades")} v={prefs.grades} on={(v) => changePrefs({ grades: v })} />}
+        <div class="stack">
+          <SwitchRow label={t("notifyChanges")} v={prefs_.changes} on={(v) => changePrefs({ changes: v })} />
+          {user.value && <SwitchRow label={t("notifyGrades")} v={prefs_.grades} on={(v) => changePrefs({ grades: v })} />}
           {st?.registered && st.status !== "relogin" ? (
             <>
-              <Row icon="bell" title={t("pushActive")} right={<button class="btn small ghost" onClick={async () => { await push.disablePush(); setSt({ registered: false }); }}>{t("pushOff")}</button>} />
+              <Row icon="bell" title={t("pushActive")} right={<button class="btn small line" onClick={async () => { await push.disablePush(); setSt({ registered: false }); }}>{t("pushOff")}</button>} />
               <Row icon="check" title={t("pushTest")} onClick={async () => setMsg(t("pushTestSent", { n: await push.sendTestPush() }))} />
             </>
           ) : user.value ? (
             <Row icon="bell" title={t("pushOn")} chevron onClick={() => setForm(true)} />
           ) : (
-            <Row icon="user" title={t("loginNeeded")} chevron onClick={() => go("/login")} />
+            <Row icon="sign-in" title={t("loginNeeded")} chevron onClick={() => go("/login")} />
           )}
         </div>
       )}
-      {msg && <p class="hint">{msg}</p>}
+      {msg && <p class="hint" style={{ marginTop: "8px" }}>{msg}</p>}
       <Sheet open={form} onClose={() => setForm(false)} title={t("pushOn")}>
-        <form class="form" onSubmit={enable}>
+        <form class="form" onSubmit={enable} style={{ marginTop: "10px" }}>
           <p class="hint">{t("pushServerNote")}</p>
           <p class="hint"><b>{t("pushLoginAgain")}</b></p>
-          <label>{t("username")}<input autoComplete="username" autoCapitalize="off" autoCorrect="off" required value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} /></label>
-          <label>{t("password")}<input type="password" autoComplete="current-password" required value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} /></label>
-          {msg && <p class="error-text">{msg}</p>}
+          <input autoComplete="username" autoCapitalize="off" autoCorrect="off" required placeholder={t("username")} aria-label={t("username")} value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} />
+          <input type="password" autoComplete="current-password" required placeholder={t("password")} aria-label={t("password")} value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} />
+          {msg && <p class="hint err-text">{msg}</p>}
           <button class="btn block" disabled={busy}>{busy ? <Spinner small /> : t("pushOn")}</button>
         </form>
       </Sheet>
@@ -368,7 +472,7 @@ function WebPush() {
   );
 }
 
-function DeleteDataRow({ onDone }: { onDone: () => Promise<void> | void }) {
+function DeleteData({ onDone }: { onDone: () => Promise<void> | void }) {
   const [sure, setSure] = useState(false);
   const [msg, setMsg] = useState("");
   const run = async () => {
@@ -381,6 +485,9 @@ function DeleteDataRow({ onDone }: { onDone: () => Promise<void> | void }) {
     setSure(false);
   };
   return (
-    <Row icon="trash" accent="#ef4444" title={sure ? t("deleteDataSure") : t("deleteData")} sub={msg || t("deleteDataHint")} onClick={run} />
+    <>
+      <button class="btn block danger" onClick={run}><Icon name="trash" size={18} />{sure ? t("deleteDataSure") : t("deleteData")}</button>
+      <p class="hint">{msg || t("deleteDataHint")}</p>
+    </>
   );
 }

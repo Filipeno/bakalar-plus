@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Day, Lesson, Target, Term } from "../lib/model";
-import { dowOf, today } from "../lib/model";
+import { dowOf, targetKey, today } from "../lib/model";
 import { dayShort, t } from "../lib/i18n";
-import { useDirectory, useWeek, type Source } from "../lib/data";
+import { useDirectory, useHomework, useWeek, type Source } from "../lib/data";
 import { patchSettings, settings, user } from "../lib/store";
 import { Icon } from "../ui/icons";
 import { Empty, ErrorBox, Loading, Page, Segmented, Updated, usePullToRefresh } from "../ui/kit";
 import { DayList, LessonSheet, WeekGrid } from "../ui/timetable";
 import { isFav, KIND_ICON, TargetPicker, toggleFav } from "../ui/picker";
-import { go, route } from "../ui/router";
+import { go, isTab, route } from "../ui/router";
 
 export function Timetable() {
   const q = route.value.q;
   const dir = useDirectory();
+  const hw = useHomework();
   const hasMy = !!user.value || !!settings.value.myTarget;
 
   const src: Source | null = useMemo(() => {
@@ -55,57 +56,79 @@ export function Timetable() {
     if (next) setDow(next.dow);
   };
 
-  const title = !src ? t("tabTimetable") : src.kind === "my" ? (user.value ? t("my") : settings.value.myTarget?.name ?? t("my")) : src.name;
+  const myName = user.value ? t("my") : settings.value.myTarget?.name ?? t("my");
+  const title = !src ? t("tabTimetable") : src.kind === "my" ? myName : src.name;
   const setTerm = (v: Term) => go("/timetable", { ...q, term: v === "actual" ? undefined : v }, true);
   const publicTarget = src && src.kind !== "my" ? (src as Target) : null;
+  const open = (x: Target | "my") => go("/timetable", x === "my" ? { term: q.term } : { k: x.kind, id: x.id, n: x.name, term: q.term }, true);
+
+  // Quick switch: my timetable, favourites, and whatever is open now.
+  const favs = settings.value.favourites;
+  const quick: Target[] = publicTarget && !favs.some((f) => targetKey(f) === targetKey(publicTarget)) ? [...favs, publicTarget] : favs;
+  const canBrowse = settings.value.publicOk;
 
   return (
-    <Page wide
-      title={<button class="title-btn" onClick={() => setPicker(true)}>
-        {src && src.kind !== "my" && <Icon name={KIND_ICON[src.kind]} size={20} />}{title}<Icon name="down" size={18} />
+    <Page wide backable={!isTab("/timetable")} sub={src ? t("tabTimetable") : undefined}
+      title={<button class="title-btn" onClick={() => canBrowse && setPicker(true)}>
+        {title}{canBrowse && <Icon name="caret-down" size={18} />}
       </button>}
       actions={<>
         {publicTarget && (
-          <button class={`icon-btn star ${isFav(publicTarget) ? "on" : ""}`} onClick={() => toggleFav(publicTarget)} aria-label={t("addFav")}>
-            <Icon name="star" filled={isFav(publicTarget)} />
+          <button class={`icon-btn ${isFav(publicTarget) ? "on" : ""}`} onClick={() => toggleFav(publicTarget)} aria-label={isFav(publicTarget) ? t("removeFav") : t("addFav")}>
+            <Icon name="star" size={24} fill={isFav(publicTarget)} />
           </button>
         )}
-        <button class="icon-btn" onClick={() => patchSettings({ view: view === "day" ? "week" : "day" })} aria-label={view === "day" ? t("weekView") : t("dayView")}>
-          <Icon name={view === "day" ? "grid" : "menu"} />
-        </button>
+        <button class="icon-btn" onClick={() => go("/settings")} aria-label={t("settings")}><Icon name="gear" size={24} /></button>
       </>}>
-      <div class="tt-controls">
-        <Segmented<Term> value={term} onChange={setTerm} options={[
-          { v: "actual", label: t("thisWeek") }, { v: "next", label: t("nextWeek") }, { v: "permanent", label: t("permanent") },
-        ]} />
-      </div>
+      {canBrowse && (
+        <div class="chips scroll tt-targets">
+          {hasMy && <button class={`chip ${src?.kind === "my" ? "on" : ""}`} onClick={() => open("my")}>{myName}</button>}
+          {quick.map((x) => (
+            <button class={`chip ${publicTarget && targetKey(publicTarget) === targetKey(x) ? "on" : ""}`} onClick={() => open(x)}>
+              <Icon name={KIND_ICON[x.kind]} size={14} />{x.name}
+            </button>
+          ))}
+          <button class="chip" onClick={() => setPicker(true)}><Icon name="magnifying-glass" size={14} />{t("search")}</button>
+        </div>
+      )}
+      {src && (
+        <div class="tt-term">
+          <Segmented<Term> value={term} onChange={setTerm} options={[
+            { v: "actual", label: t("thisWeek") }, { v: "next", label: t("nextWeek") }, { v: "permanent", label: t("permanent") },
+          ]} />
+        </div>
+      )}
 
-      {!src && <Empty icon="grid" text={t("searchTarget")}><button class="btn" onClick={() => setPicker(true)}>{t("search")}</button></Empty>}
+      {!src && <Empty icon="calendar-blank" text={t("searchTarget")}><button class="btn" onClick={() => setPicker(true)}>{t("search")}</button></Empty>}
       {src && week.loading && !week.data && <Loading />}
       {src && week.error != null && <ErrorBox error={week.error} onRetry={week.reload} />}
 
-      {week.data && view === "day" && (
-        <>
-          <div class="day-tabs">
-            {days.map((d) => (
-              <button class={`day-tab ${d.dow === dow ? "on" : ""} ${d.date === today() ? "today" : ""} ${d.off ? "off" : ""}`} onClick={() => setDow(d.dow)}>
-                <span>{dayShort(d.dow)}</span>
-                {d.date && <b>{Number(d.date.slice(8))}</b>}
-                {d.lessons.some((l) => l.change) && <i class="dot" />}
+      {week.data && (
+        <div class="tt-days">
+          <div class="tt-days-in">
+            {view === "day" && days.map((d) => (
+              <button class={`day-btn ${d.dow === dow ? "on" : ""} ${d.date === today() ? "today" : ""} ${d.off ? "off" : ""}`} onClick={() => setDow(d.dow)}>
+                {dayShort(d.dow)}
+                {d.date && <small>{Number(d.date.slice(8))}.{Number(d.date.slice(5, 7))}.</small>}
+                {d.lessons.some((l) => l.change) && <i />}
               </button>
             ))}
           </div>
-          <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-            <DayList day={day} view={src!.kind} onLesson={(l) => setSel({ l, d: day! })} />
-          </div>
-        </>
+          <button class="view-btn" onClick={() => patchSettings({ view: view === "day" ? "week" : "day" })} aria-label={t("viewToggle")}>
+            <Icon name={view === "day" ? "squares-four" : "rows"} size={20} />
+          </button>
+        </div>
+      )}
+      {week.data && view === "day" && (
+        <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+          <DayList day={day} view={src!.kind} onLesson={(l) => setSel({ l, d: day! })} />
+        </div>
       )}
       {week.data && view === "week" && <WeekGrid week={week.data} view={src!.kind} onLesson={(l, d) => setSel({ l, d })} />}
       {week.data && <Updated at={week.at} loading={week.loading} onRefresh={week.reload} />}
 
-      <TargetPicker open={picker} onClose={() => setPicker(false)} allowMy
-        onPick={(x) => go("/timetable", x === "my" ? { term: q.term } : { k: x.kind, id: x.id, n: x.name, term: q.term }, true)} />
-      <LessonSheet lesson={sel?.l ?? null} day={sel?.d} onClose={() => setSel(null)} />
+      <TargetPicker open={picker} onClose={() => setPicker(false)} allowMy onPick={open} />
+      <LessonSheet lesson={sel?.l ?? null} day={sel?.d} hw={src?.kind === "my" ? hw.data : undefined} onClose={() => setSel(null)} />
     </Page>
   );
 }

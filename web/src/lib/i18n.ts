@@ -93,6 +93,24 @@ const cs = {
   iosInApp: "Jsi ve vestavěném prohlížeči jiné aplikace (Instagram, Messenger…). Klepni na ••• nebo ikonu kompasu a zvol Otevřít v Safari, nebo zkopíruj odkaz a vlož ho do Safari.",
   iosCopy: "Zkopírovat odkaz", iosCopied: "Zkopírováno",
   iosSeparate: "Appka na ploše má vlastní úložiště: přihlášení v prohlížeči se do ní nepřenese, přihlas se tam znovu.",
+  // redesign
+  customize: "Přizpůsobení", customizeSub: "Lišta, karty, barva, hustota",
+  cTabs: "Dolní lišta", cTabsSub: "Vyber a seřaď až 4 sekce. Více je vždy poslední.", cHome: "Karty na Dnes", cAccent: "Barva akcentu",
+  cDens: "Hustota rozvrhu", cStart: "Úvodní obrazovka", densComfort: "Volnější", densCompact: "Kompaktní", cardChanges: "Změny",
+  moveUp: "Posunout nahoru", moveDown: "Posunout dolů",
+  endsAtIn: "končí v {t} · za {m} min", startsAtIn: "začíná v {t} · za {m} min", topicLine: "Téma: {x}", lessonTopic: "Téma hodiny",
+  hwOne: "Domácí úkol", openHw: "Otevřít v úkolech", legend: "Oranžově ohraničené hodiny mají změnu, přeškrtnuté odpadají.",
+  calc: "Kalkulačka", newThisWeek: "Nové tento týden: {n}", goal: "Cíl (průměr)", goal1: "Na jedničku (≤1,5)", goal2: "Na dvojku (≤2,5)",
+  goal3: "Na trojku (≤3,5)", nextWeight: "Váha další známky", needAtLeast: "Známka s vahou {w} nejhůř",
+  calSchool: "Škola", calHw: "Úkoly", calClass: "Třída", visibleClass: "Uvidí to jen tvoje třída. Autor se ukáže jako „Jan N.“.",
+  freeRoomsCount: "Volné učebny v {p}. hodině ({a}–{b}): {n}", occupied: "obsazeno", freeLow: "volno",
+  rightNowPeriod: "Právě teď · {p}. hodina", atPeriod: "{p}. hodina · {t}", roomX: "Učebna {r}", untilT: "do {t}", nextRoomAt: "Další: učebna {r} v {t}",
+  schoolEnds: "Škola končí", inClass: "hodina", openTimetableBtn: "Otevřít rozvrh",
+  unofficial: "Neoficiální aplikace, není spojena s BAKALÁŘI software s.r.o.", unlockHint: "Odemkne známky, úkoly, zprávy a kalendář",
+  pickSchoolSub: "Funguje pro školy z adresáře Bakalářů.", noSchoolsFound: "Nic nenalezeno", viewToggle: "Přepnout den / týden",
+  themeLabel: "Motiv", needsPublic: "Jen u škol s veřejným rozvrhem", needsLogin: "Vyžaduje přihlášení",
+  iosQ1: "V Safari klepni na Sdílet", iosQ2: "Vyber Přidat na plochu", iosQ3: "Otevři Bakaláři+ z plochy a přihlas se tam znovu",
+  iosQPush: "Upozornění na iPhonu (iOS 16.4+) fungují jen v appce otevřené z plochy.", iosMore: "Podrobněji",
 };
 
 type Dict = typeof cs;
@@ -176,6 +194,23 @@ const en: Dict = {
   iosInApp: "You're in another app's built-in browser (Instagram, Messenger…). Tap ••• or the compass icon and choose Open in Safari, or copy the link and paste it into Safari.",
   iosCopy: "Copy link", iosCopied: "Copied",
   iosSeparate: "The home-screen app has its own storage: a sign-in made in the browser doesn't carry over, so sign in there again.",
+  customize: "Customize", customizeSub: "Tab bar, cards, colour, density",
+  cTabs: "Bottom tab bar", cTabsSub: "Pick and order up to 4 sections. More is always last.", cHome: "Cards on Today", cAccent: "Accent colour",
+  cDens: "Timetable density", cStart: "Start screen", densComfort: "Comfortable", densCompact: "Compact", cardChanges: "Changes",
+  moveUp: "Move up", moveDown: "Move down",
+  endsAtIn: "ends {t} · in {m} min", startsAtIn: "starts {t} · in {m} min", topicLine: "Topic: {x}", lessonTopic: "Lesson topic",
+  hwOne: "Homework", openHw: "Open in homework", legend: "Outlined lessons have a change, struck-through ones are cancelled.",
+  calc: "Calculator", newThisWeek: "New this week: {n}", goal: "Goal (average)", goal1: "For a 1 (≤1.5)", goal2: "For a 2 (≤2.5)",
+  goal3: "For a 3 (≤3.5)", nextWeight: "Weight of next grade", needAtLeast: "Worst grade with weight {w}",
+  calSchool: "School", calHw: "Homework", calClass: "Class", visibleClass: "Only your class can see it. The author shows as “Jan N.”.",
+  freeRoomsCount: "Free rooms in period {p} ({a}–{b}): {n}", occupied: "occupied", freeLow: "free",
+  rightNowPeriod: "Right now · period {p}", atPeriod: "Period {p} · {t}", roomX: "Room {r}", untilT: "until {t}", nextRoomAt: "Next: room {r} at {t}",
+  schoolEnds: "School ends", inClass: "class", openTimetableBtn: "Open timetable",
+  unofficial: "Unofficial app, not affiliated with BAKALÁŘI software s.r.o.", unlockHint: "Unlocks grades, homework, messages and calendar",
+  pickSchoolSub: "Works for schools in the Bakaláři directory.", noSchoolsFound: "Nothing found", viewToggle: "Switch day / week",
+  themeLabel: "Theme", needsPublic: "Only for schools with a public timetable", needsLogin: "Needs sign-in",
+  iosQ1: "In Safari tap Share", iosQ2: "Choose Add to Home Screen", iosQ3: "Open Bakaláři+ from the Home Screen and sign in there again",
+  iosQPush: "Notifications on iPhone (iOS 16.4+) only work in the app opened from the Home Screen.", iosMore: "More detail",
 };
 
 const dicts: Record<Lang, Dict> = { cs, en };

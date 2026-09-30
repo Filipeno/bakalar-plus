@@ -11,7 +11,7 @@ import { checkForUpdate, installUpdate, update, updating } from "../lib/update";
 import { clearCache, expired, patchSettings, readCache, settings, user, writeCache } from "../lib/store";
 import type { Target } from "../lib/model";
 import { Icon } from "../ui/icons";
-import { errorText, Page, Row, Section, Segmented, Sheet, Spinner, Switch } from "../ui/kit";
+import { errorText, IosInstall, Page, Row, Section, Segmented, Sheet, Spinner, Switch } from "../ui/kit";
 import { go, route, useBack } from "../ui/router";
 import { TargetPicker } from "../ui/picker";
 
@@ -45,6 +45,7 @@ export function Welcome() {
           <Segmented small value={settings.value.lang} onChange={(v) => patchSettings({ lang: v })}
             options={[{ v: "auto", label: "Auto" }, { v: "cs", label: "Čeština" }, { v: "en", label: "English" }]} />
         </div>
+        <IosInstall />
         <button class="btn block big" onClick={() => setStep("school")}>{t("start")}</button>
       </div>
     );

@@ -448,3 +448,5 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 .class-chip:active { background: var(--accent); color: var(--on-accent); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+.steps { margin: 0; padding-left: 22px; display: grid; gap: 8px; font-size: 15px; }

@@ -16,6 +16,14 @@ export interface PushPrefs { grades: boolean; changes: boolean }
 interface Saved { token: string; endpoint: string; school: string }
 
 export const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+export type IosBrowser = "safari" | "inapp" | "other";
+/** Safari can add the page to the home screen reliably; other browsers/in-app views are sent to Safari. */
+export function iosBrowser(): IosBrowser {
+  const ua = navigator.userAgent;
+  if (/FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|Snapchat|TikTok|musical_ly|Messenger|Twitter|LinkedInApp|GSA\//.test(ua)) return "inapp";
+  if (/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|DuckDuckGo|Brave/.test(ua)) return "other";
+  return /Safari\//.test(ua) ? "safari" : "inapp";
+}
 export const isStandalone = () => matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
 export const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 

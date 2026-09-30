@@ -84,6 +84,15 @@ const cs = {
   deleteDataSure: "Opravdu? Klepni znovu.", deleted: "Smazáno.",
   loginPushNote: "Pokud zapneš upozornění, server si drží přihlašovací token (ne heslo), aby je mohl posílat.",
   showWeekend: "Zobrazit víkend",
+  iosBanner: "Nainstaluj si Bakaláři+ na iPhone", iosHow: "Jak", iosLater: "Později",
+  iosTitle: "Přidání na plochu", iosWhy: "Na ploše běží na celou obrazovku, drží přihlášení a jen tak fungují oznámení.",
+  iosS1: "Otevři tuto stránku v Safari.", iosS2: "Dole klepni na Sdílet (čtverec se šipkou nahoru; někdy pod ••• ).",
+  iosS3: "Sjeď níže a zvol Přidat na plochu.", iosS4: "Nech zapnuté „Otevřít jako webovou aplikaci“ a klepni na Přidat.",
+  iosS5: "Zavři Safari a otevři Bakaláři+ ikonou na ploše. Tam se přihlas znovu.",
+  iosOther: "Jsi v jiném prohlížeči než Safari. Přidání na plochu funguje nejspolehlivěji v Safari, otevři tam tuto adresu.",
+  iosInApp: "Jsi ve vestavěném prohlížeči jiné aplikace (Instagram, Messenger…). Klepni na ••• nebo ikonu kompasu a zvol Otevřít v Safari, nebo zkopíruj odkaz a vlož ho do Safari.",
+  iosCopy: "Zkopírovat odkaz", iosCopied: "Zkopírováno",
+  iosSeparate: "Appka na ploše má vlastní úložiště: přihlášení v prohlížeči se do ní nepřenese, přihlas se tam znovu.",
 };
 
 type Dict = typeof cs;
@@ -158,6 +167,15 @@ const en: Dict = {
   deleteDataSure: "Sure? Tap again.", deleted: "Deleted.",
   loginPushNote: "If you turn on notifications, the server keeps a sign-in token (not your password) so it can send them.",
   showWeekend: "Show weekend",
+  iosBanner: "Install Bakaláři+ on your iPhone", iosHow: "How", iosLater: "Later",
+  iosTitle: "Add to Home Screen", iosWhy: "On the home screen it runs full screen, keeps you signed in and it's the only way to get notifications.",
+  iosS1: "Open this page in Safari.", iosS2: "Tap Share at the bottom (square with an arrow pointing up; sometimes under •••).",
+  iosS3: "Scroll down and choose Add to Home Screen.", iosS4: "Keep “Open as Web App” on and tap Add.",
+  iosS5: "Close Safari and open Bakaláři+ from the icon on your home screen. Sign in again there.",
+  iosOther: "You're not in Safari. Adding to the home screen works most reliably in Safari, so open this address there.",
+  iosInApp: "You're in another app's built-in browser (Instagram, Messenger…). Tap ••• or the compass icon and choose Open in Safari, or copy the link and paste it into Safari.",
+  iosCopy: "Copy link", iosCopied: "Copied",
+  iosSeparate: "The home-screen app has its own storage: a sign-in made in the browser doesn't carry over, so sign in there again.",
 };
 
 const dicts: Record<Lang, Dict> = { cs, en };

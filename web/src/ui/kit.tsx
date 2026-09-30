@@ -6,6 +6,7 @@ import { t } from "../lib/i18n";
 import { online } from "../lib/store";
 import { AuthError } from "../lib/bakalari";
 import { NetError } from "../lib/net";
+import { iosBrowser, isIos, isStandalone } from "../lib/push";
 import { installUpdate, update, updating } from "../lib/update";
 
 export function Page({ title, sub, backable, actions, children, wide }: {
@@ -28,6 +29,7 @@ export function Page({ title, sub, backable, actions, children, wide }: {
           <button class="btn small" disabled={updating.value === "busy"} onClick={installUpdate}>{updating.value === "busy" ? t("updateBusy") : t("updateNow")}</button>
         </div>
       )}
+      <IosInstall dismissible />
       <main class="content">{children}</main>
     </div>
   );
@@ -165,4 +167,34 @@ export function usePullToRefresh(onRefresh: () => void) {
     addEventListener("touchend", up, { passive: true });
     return () => { removeEventListener("touchstart", down); removeEventListener("touchend", up); };
   }, [onRefresh]);
+}
+
+/** iPhone only, in a browser tab (not the installed app): explains how to add the page to the home screen. */
+export function IosInstall({ dismissible }: { dismissible?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(() => !!dismissible && localStorage.getItem("bp.iosTip") === "1");
+  const [copied, setCopied] = useState(false);
+  if (!isIos() || isStandalone() || hidden) return null;
+  const br = iosBrowser();
+  const copy = () => navigator.clipboard?.writeText(location.origin).then(() => setCopied(true)).catch(() => {});
+  return (
+    <>
+      <div class="banner soft update">
+        <span class="grow">{t("iosBanner")}</span>
+        <button class="btn small" onClick={() => setOpen(true)}>{t("iosHow")}</button>
+        {dismissible && <button class="btn small ghost" onClick={() => { localStorage.setItem("bp.iosTip", "1"); setHidden(true); }}>{t("iosLater")}</button>}
+      </div>
+      <Sheet open={open} onClose={() => setOpen(false)} title={t("iosTitle")}>
+        <div class="form">
+          <p class="hint">{t("iosWhy")}</p>
+          {br !== "safari" && <p class="banner warn">{t(br === "inapp" ? "iosInApp" : "iosOther")}</p>}
+          {br !== "safari" && <button class="btn block ghost" onClick={copy}>{copied ? t("iosCopied") : t("iosCopy")}</button>}
+          <ol class="steps">
+            {(br === "safari" ? ["iosS2", "iosS3", "iosS4", "iosS5"] : ["iosS1", "iosS2", "iosS3", "iosS4", "iosS5"]).map((k) => <li>{t(k as any)}</li>)}
+          </ol>
+          <p class="hint">{t("iosSeparate")}</p>
+        </div>
+      </Sheet>
+    </>
+  );
 }

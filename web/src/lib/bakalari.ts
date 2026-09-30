@@ -87,7 +87,7 @@ const nativeBackend: Backend = {
   },
   async request(method, path, body) {
     try { return await native!.call("api", { method, path, body: body !== undefined ? JSON.stringify(body) : undefined }); }
-    catch (e: any) { throw e.code === "expired" ? new AuthError(e.message, "expired") : new NetError(e.message, 0, e.code || "offline"); }
+    catch (e: any) { throw e.code === "expired" ? new AuthError(e.message, "expired") : new NetError(e.message, 0, e.code === "offline" && navigator.onLine ? "unreachable" : e.code || "offline"); }
   },
   async accessToken() { return (await native!.call<{ token: string }>("accessToken")).token; },
   async logout() { await native!.call("logout"); },

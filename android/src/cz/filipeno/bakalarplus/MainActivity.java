@@ -131,9 +131,10 @@ public class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        // The web part closes sheets and sub-pages first; "false" means it's on the home tab.
+        // The web part closes sheets, sub-pages and setup steps first; "false" means it's on the home tab.
+        // Then only send the app to the background (like Android does for launcher apps), so it reopens where it was.
         web.evaluateJavascript("window.__bpBack?window.__bpBack():false", v -> {
-            if (!"true".equals(v)) finish();
+            if (!"true".equals(v)) moveTaskToBack(true);
         });
     }
 

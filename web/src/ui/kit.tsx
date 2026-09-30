@@ -77,8 +77,10 @@ export function Empty({ icon = "info", text, children }: { icon?: IconName; text
 }
 
 export function errorText(e: unknown): string {
+  if (e instanceof AuthError && e.code === "offline") return t(navigator.onLine ? "unreachable" : "offline");
   if (e instanceof AuthError) return e.code === "expired" ? t("expired") : e.code === "bad_login" ? t("badLogin") : t("errorGeneric", { e: e.message });
   if (e instanceof NetError && e.code === "offline") return t("offline");
+  if (e instanceof NetError && e.code === "unreachable") return t("unreachable");
   return t("errorGeneric", { e: (e as Error)?.message ?? String(e) });
 }
 

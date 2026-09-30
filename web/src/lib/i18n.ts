@@ -9,6 +9,8 @@ const cs = {
   // common
   loading: "Načítám…", retry: "Zkusit znovu", cancel: "Zrušit", save: "Uložit", delete: "Smazat", edit: "Upravit", close: "Zavřít",
   back: "Zpět", done: "Hotovo", search: "Hledat", add: "Přidat", offline: "Jsi offline – zobrazuji uložená data",
+  schoolNotFound: "Na této adrese Bakaláři nejsou. Zkontroluj ji – je to adresa, kde se přihlašuješ.",
+  unreachable: "Server neodpovídá – zkontroluj adresu, nebo to zkus za chvíli.",
   updatedAt: "Aktualizováno {t}", errorGeneric: "Něco se nepovedlo: {e}", noData: "Nic tu není",
   loginNeeded: "Pro tuhle část se přihlas svým účtem Bakalářů.", loginAction: "Přihlásit se",
   expired: "Přihlášení vypršelo, přihlas se znovu.",
@@ -91,6 +93,8 @@ const en: Dict = {
   tabToday: "Today", tabTimetable: "Timetable", tabGrades: "Grades", tabCalendar: "Calendar", tabMore: "More",
   loading: "Loading…", retry: "Try again", cancel: "Cancel", save: "Save", delete: "Delete", edit: "Edit", close: "Close",
   back: "Back", done: "Done", search: "Search", add: "Add", offline: "You're offline – showing saved data",
+  schoolNotFound: "No Bakaláři at this address. Check it – it's the address where you sign in.",
+  unreachable: "The server doesn't answer – check the address or try again later.",
   updatedAt: "Updated {t}", errorGeneric: "Something went wrong: {e}", noData: "Nothing here",
   loginNeeded: "Sign in with your Bakaláři account for this part.", loginAction: "Sign in",
   expired: "Your sign-in expired, please sign in again.",

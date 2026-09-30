@@ -29,7 +29,8 @@ export async function http(req: HttpRequest): Promise<HttpResponse> {
     try {
       return await native.call<HttpResponse>("http", req);
     } catch (e) {
-      throw new NetError((e as Error).message || "offline", 0, "offline");
+      // Connected but no answer (wrong address, school server down) is not "offline".
+      throw new NetError((e as Error).message || "offline", 0, navigator.onLine ? "unreachable" : "offline");
     }
   }
   const origin = new URL(req.url).origin;

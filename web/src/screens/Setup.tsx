@@ -7,11 +7,11 @@ import { http, usesRelay } from "../lib/net";
 import { native, isAndroid } from "../lib/native";
 import { forgetCloud } from "../lib/cloud";
 import * as push from "../lib/push";
-import { clearCache, expired, patchSettings, settings, user, writeCache } from "../lib/store";
+import { clearCache, expired, patchSettings, readCache, settings, user, writeCache } from "../lib/store";
 import type { Target } from "../lib/model";
 import { Icon } from "../ui/icons";
 import { errorText, Page, Row, Section, Segmented, Sheet, Spinner, Switch } from "../ui/kit";
-import { go } from "../ui/router";
+import { go, route, useBack } from "../ui/router";
 import { TargetPicker } from "../ui/picker";
 
 const REPO = "https://github.com/Filipeno/bakalar-plus";
@@ -20,8 +20,12 @@ declare const __APP_VERSION__: string;
 // ---------------- onboarding ----------------
 
 export function Welcome() {
-  const [step, setStep] = useState<"hello" | "school" | "login" | "class">("hello");
-  const [dir, setDir] = useState<Directory | null>(null);
+  // "Change school" starts at the picker; reopened mid-setup with a school already picked: continue at the login step.
+  const picked = settings.value.school?.url;
+  const [step, setStep] = useState<"hello" | "school" | "login" | "class">(route.value.q.step === "school" ? "school" : picked ? "login" : "hello");
+  const [dir, setDir] = useState<Directory | null>(() => (picked ? readCache<Directory>(`dir:${picked}`)?.v ?? null : null));
+  const prev = { hello: "hello", school: "hello", login: "school", class: "login" } as const;
+  useBack(step !== "hello", () => setStep(prev[step]), step);
 
   const finish = () => { patchSettings({ onboarded: true }); go("/today", undefined, true); };
 
@@ -80,6 +84,7 @@ function SchoolPicker({ onPicked }: { onPicked: (dir: Directory | null) => void 
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  useBack(manual || !!town, () => { setErr(""); if (manual) setManual(false); else setTown(null); }, `${manual}|${town}`);
 
   useEffect(() => {
     if (!q.trim()) { setTowns([]); return; }
@@ -97,13 +102,13 @@ function SchoolPicker({ onPicked }: { onPicked: (dir: Directory | null) => void 
     try {
       const u = normalizeSchoolUrl(rawUrl);
       const r = await http({ url: `${u}/api`, headers: { Accept: "application/json" } });
-      if (r.status !== 200 || !/ApiVersion/i.test(r.text)) throw new Error(t("schoolUrlHint"));
+      if (r.status !== 200 || !/ApiVersion/i.test(r.text)) throw new Error("not-bakalari");
       let dir: Directory | null = null;
       try { dir = await fetchDirectory(u); writeCache(`dir:${u}`, dir); } catch (e) { if (!(e instanceof PublicDisabled)) throw e; }
       if (settings.value.school?.url !== u) { await bk.logout().catch(() => {}); user.value = null; forgetCloud(); }
       patchSettings({ school: { url: u, name }, publicOk: !!dir, myTarget: null, favourites: [], compare: [] });
       onPicked(dir);
-    } catch (e) { setErr(errorText(e)); }
+    } catch (e) { setErr((e as Error).message === "not-bakalari" ? t("schoolNotFound") : errorText(e)); }
     setBusy(false);
   };
 
@@ -215,7 +220,7 @@ export function Settings() {
       <Section title={t("school")}>
         <div class="card-list">
           <Row icon="home" title={s.school?.name ?? "—"} sub={s.school?.url.replace(/^https:\/\//, "")}
-            right={<button class="btn small ghost" onClick={() => { patchSettings({ onboarded: false }); go("/welcome", undefined, true); }}>{t("changeSchool")}</button>} />
+            right={<button class="btn small ghost" onClick={() => { patchSettings({ onboarded: false }); go("/welcome", { step: "school" }, true); }}>{t("changeSchool")}</button>} />
         </div>
       </Section>
 

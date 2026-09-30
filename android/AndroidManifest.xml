@@ -41,7 +41,7 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info" />
         </receiver>
 
-        <receiver android:name=".Updater$Result" android:exported="false">
+        <receiver android:name=".UpdateReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="cz.filipeno.bakalarplus.INSTALL_DONE" />
             </intent-filter>

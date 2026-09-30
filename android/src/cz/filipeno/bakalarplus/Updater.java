@@ -25,7 +25,7 @@ import java.security.MessageDigest;
  */
 final class Updater {
     private static final String LATEST = "https://api.github.com/repos/Filipeno/bakalar-plus/releases/latest";
-    private static final String ACTION = "cz.filipeno.bakalarplus.INSTALL_DONE";
+    static final String ACTION = "cz.filipeno.bakalarplus.INSTALL_DONE";
 
     private Updater() { }
 
@@ -91,17 +91,6 @@ final class Updater {
             s.commit(PendingIntent.getBroadcast(c, id, done, flags).getIntentSender());
         }
         return "started";
-    }
-
-    /** Receives the installer's progress; when it needs the user's OK it gives us the confirmation screen to show. */
-    static final class Result extends android.content.BroadcastReceiver {
-        @Override
-        public void onReceive(Context c, Intent i) {
-            if (PackageInstaller.STATUS_PENDING_USER_ACTION == i.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)) {
-                Intent confirm = i.getParcelableExtra(Intent.EXTRA_INTENT);
-                if (confirm != null) { confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); c.startActivity(confirm); }
-            }
-        }
     }
 
     /** Numeric compare of "1.0.10" style versions. */

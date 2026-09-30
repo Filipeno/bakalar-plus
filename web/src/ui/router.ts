@@ -1,11 +1,12 @@
 import { signal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
+import { prefs, sectionPath } from "./prefs";
 
 // Hash routes: "#/timetable?k=class&id=30". Android's back button walks the WebView history.
 export interface Route { path: string; q: Record<string, string> }
 
 function parse(): Route {
-  const h = location.hash.replace(/^#/, "") || "/today";
+  const h = location.hash.replace(/^#/, "") || sectionPath(prefs.value.start);
   const [path, qs = ""] = h.split("?");
   return { path, q: Object.fromEntries(new URLSearchParams(qs)) };
 }
@@ -21,11 +22,15 @@ export function go(path: string, q?: Record<string, string | undefined>, replace
   else location.hash = h;
 }
 
+/** The default tabs. The tab bar itself is customisable, see `isTab`. */
 export const TABS = ["/today", "/timetable", "/grades", "/calendar", "/more"];
 
-/** Back inside the app: sub-pages return to their tab, tabs stay. */
+/** Screens that are in the tab bar right now (Today and More always count as roots). */
+export const isTab = (path: string) => path === "/today" || path === "/more" || prefs.value.tabs.some((s) => sectionPath(s) === path);
+
+/** Back inside the app: sub-pages return to where they were opened from, tabs stay. */
 export function back() {
-  if (history.length > 1 && !TABS.includes(route.value.path)) history.back();
+  if (history.length > 1 && !isTab(route.value.path)) history.back();
   else go("/today", undefined, true);
 }
 
@@ -44,7 +49,7 @@ declare global { interface Window { __bpBack?: () => boolean } }
 window.__bpBack = () => {
   const c = closers.pop();
   if (c) { c(); return true; }
-  if (!TABS.includes(route.value.path)) { history.back(); return true; }
+  if (!isTab(route.value.path)) { history.back(); return true; }
   if (route.value.path !== "/today") { go("/today", undefined, true); return true; }
   return false;   // let Android leave the app
 };

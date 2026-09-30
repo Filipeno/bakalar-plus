@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { Day, Lesson, Week } from "../lib/model";
-import { addDays, byPeriod, dayFor, liveLessons, nowMin, toMin, today } from "../lib/model";
+import { addDays, byPeriod, dayFor, hhmm, liveLessons, nowMin, toMin, today } from "../lib/model";
 import { cap, fmtDate, fmtRelDay, t } from "../lib/i18n";
 import { useEvents, useHomework, useMarks, useWeek } from "../lib/data";
+import type { Homework } from "../lib/bakalari";
 import { settings, user } from "../lib/store";
 import { native } from "../lib/native";
 import { Icon } from "../ui/icons";
-import { Empty, ErrorBox, Loading, Page, Row, Section, subjectColor, Updated, usePullToRefresh } from "../ui/kit";
-import { changeLabel, DayList, LessonSheet } from "../ui/timetable";
+import { Empty, ErrorBox, IosInstall, Loading, Page, Row, Section, SectionLink, Updated, usePullToRefresh } from "../ui/kit";
+import { changeLabel, LessonSheet, TimeRail } from "../ui/timetable";
 import { go } from "../ui/router";
+import { prefs, type CardKey } from "../ui/prefs";
 import { useClassEntries } from "./Calendar";
 
 function useTick(ms: number) {
@@ -22,12 +24,15 @@ function nextSchoolDay(weeks: (Week | undefined)[], iso: string): Day | undefine
   return all.sort((a, b) => a.date!.localeCompare(b.date!))[0];
 }
 
+const SCHOOL_EVENT = "oklch(.7 .11 230)";
+
 export function Today() {
   useTick(20_000);
   const my = { kind: "my" as const };
   const hasMy = !!user.value || !!settings.value.myTarget;
   const cur = useWeek(hasMy ? my : null, "actual");
   const nxt = useWeek(hasMy ? my : null, "next");
+  const hw = useHomework();
   const [sel, setSel] = useState<{ l: Lesson; d: Day } | null>(null);
   usePullToRefresh(() => { cur.reload(); nxt.reload(); });
 
@@ -46,34 +51,39 @@ export function Today() {
   const greet = h < 10 ? t("goodMorning") : h < 18 ? t("goodDay") : t("goodEvening");
   // Bakaláři: "Surname Firstname, 2.A"
   const first = user.value?.name?.split(",")[0].trim().split(/\s+/).slice(-1)[0];
+  const cls = user.value?.classAbbrev || settings.value.myTarget?.name;
 
   if (!hasMy) {
     return (
       <Page title={t("appName")}>
-        <Empty icon="grid" text={t("pickClassHint")}><button class="btn" onClick={() => go("/settings")}>{t("myClass")}</button></Empty>
+        <IosInstall dismissible />
+        <Empty icon="calendar-blank" text={t("pickClassHint")}><button class="btn" onClick={() => go("/settings")}>{t("myClass")}</button></Empty>
       </Page>
     );
   }
 
+  const cards: Record<CardKey, () => preact.JSX.Element | null> = {
+    changes: () => <Changes weeks={[cur.data, nxt.data]} onLesson={(l, d) => setSel({ l, d })} />,
+    hw: () => (user.value ? <DueSoon hw={hw.data} /> : null),
+    events: () => (user.value ? <Upcoming /> : null),
+    grades: () => (user.value ? <NewGrades /> : null),
+  };
+
   return (
-    <Page title={`${greet}${first ? `, ${first}` : ""}`} sub={fmtDate(td, true)}
-      actions={<button class="icon-btn" onClick={() => go("/settings")} aria-label={t("settings")}><Icon name="gear" /></button>}>
+    <Page smallTitle title={`${greet}${first ? `, ${first}` : ""}`} sub={[fmtDate(td, true), cls].filter(Boolean).join(" · ")}
+      actions={<button class="icon-btn" onClick={() => go("/settings")} aria-label={t("settings")}><Icon name="gear" size={24} /></button>}>
+      <IosInstall dismissible />
       {cur.loading && !cur.data && <Loading />}
       {cur.error != null && <ErrorBox error={cur.error} onRetry={cur.reload} />}
       {cur.data && <NowCard day={todayDay} tomorrow={nextSchoolDay([cur.data, nxt.data], td)} />}
 
-      {shown && (
-        <Section title={shown === todayDay ? t("todayLessons") : cap(fmtRelDay(shown.date!, td))}>
-          <DayList day={shown} view="my" onLesson={(l) => setSel({ l, d: shown })} />
-        </Section>
-      )}
+      {shown && shown !== todayDay && <div class="label" style={{ marginTop: "22px" }}>{cap(fmtRelDay(shown.date!, td))}</div>}
+      {shown?.note && <div class="day-note"><Icon name="info" size={18} />{shown.note}</div>}
+      {shown && <TimeRail day={shown} hw={hw.data} onLesson={(l) => setSel({ l, d: shown })} />}
 
-      <Changes weeks={[cur.data, nxt.data]} onLesson={(l, d) => setSel({ l, d })} />
-      {user.value && <DueSoon />}
-      {user.value && <Upcoming />}
-      {user.value && <NewGrades />}
+      {prefs.value.cards.filter((c) => c.on).map((c) => cards[c.k]())}
       {cur.data && <Updated at={cur.at} loading={cur.loading} onRefresh={() => { cur.reload(); nxt.reload(); }} />}
-      <LessonSheet lesson={sel?.l ?? null} day={sel?.d} onClose={() => setSel(null)} />
+      <LessonSheet lesson={sel?.l ?? null} day={sel?.d} hw={hw.data} onClose={() => setSel(null)} />
     </Page>
   );
 }
@@ -83,61 +93,54 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
   const periods = day && !day.off ? byPeriod({ ...day, lessons: liveLessons(day) }) : [];
   const current = periods.find((p) => nm >= toMin(p.begin) && nm < toMin(p.end));
   const upcoming = periods.find((p) => toMin(p.begin) > nm);
+  const name = (l: Lesson) => l.subjectName || l.subject;
+  const nextLine = (p?: (typeof periods)[number]) => p
+    ? `${t("next")}: ${name(p.lessons[0])} ${hhmm(p.begin)}–${hhmm(p.end)}${p.lessons[0].room ? ` · ${p.lessons[0].room}` : ""}`
+    : "";
 
-  if (current || (upcoming && periods.some((p) => toMin(p.end) <= nm))) {
-    // at school: in a lesson or in a break
-    const main = current ?? upcoming!;
-    const l = main.lessons[0];
-    const color = subjectColor(l.subject || l.subjectName);
-    const total = toMin(main.end) - toMin(main.begin);
-    const pct = current ? Math.min(100, ((nm - toMin(main.begin)) / total) * 100) : 0;
-    const after = current ? periods.find((p) => toMin(p.begin) >= toMin(current.end)) : undefined;
+  if (current) {
+    const l = current.lessons[0];
+    const total = toMin(current.end) - toMin(current.begin);
+    const pct = Math.min(100, ((nm - toMin(current.begin)) / total) * 100);
+    const after = periods.find((p) => toMin(p.begin) >= toMin(current.end));
     return (
-      <div class="now-card" style={{ "--c": color } as any}>
-        <div class="now-label">{current ? t("now") : t("breakNow")}</div>
-        <div class="now-title">{current ? l.subjectName || l.subject : `${t("next")}: ${l.subjectName || l.subject}`}</div>
-        <div class="now-meta">
-          {[l.room, l.teacherName, l.group].filter(Boolean).join(" · ")}
-          {l.change && <span class={`badge chg ${l.change.kind}`}>{changeLabel(l.change.kind)}</span>}
+      <div class="now-card">
+        <div class="now-top">
+          <span class="now-title">{name(l)}{l.room ? ` · ${l.room}` : ""}{l.change && <span class="tag">{changeLabel(l.change.kind)}</span>}</span>
+          <span class="now-end">{t("endsAtIn", { t: hhmm(current.end), m: toMin(current.end) - nm })}</span>
         </div>
-        <div class="now-count">
-          {current ? t("endsIn", { m: toMin(main.end) - nm }) : t("startsIn", { m: toMin(main.begin) - nm })}
-        </div>
-        {current && <div class="progress"><span style={{ width: `${pct}%` }} /></div>}
-        {after && (
-          <div class="now-next">
-            <Icon name="chev" size={16} />
-            {t("next")}: <b>{after.lessons[0].subjectName || after.lessons[0].subject}</b> {t("at", { t: after.begin })}{after.lessons[0].room ? ` · ${after.lessons[0].room}` : ""}
-          </div>
-        )}
+        <div class="progress"><span style={{ width: `${pct}%` }} /></div>
+        <div class="now-next">{after ? nextLine(after) : t("lastEnds", { t: hhmm(current.end) })}</div>
       </div>
     );
   }
 
   if (upcoming) {
     const l = upcoming.lessons[0];
+    const inBreak = periods.some((p) => toMin(p.end) <= nm);
     return (
-      <div class="now-card calm" style={{ "--c": subjectColor(l.subject) } as any}>
-        <div class="now-label">{t("todayLessons")}</div>
-        <div class="now-title">{t("firstLesson", { t: upcoming.begin })}</div>
-        <div class="now-meta">{l.subjectName || l.subject}{l.room ? ` · ${l.room}` : ""} · {t("lessonsCount", { n: periods.length })} · {t("lastEnds", { t: periods[periods.length - 1].end })}</div>
-        <div class="now-count">{t("startsIn", { m: toMin(upcoming.begin) - nm })}</div>
+      <div class="now-card">
+        <div class="now-top">
+          <span class="now-title">{inBreak ? `${t("breakNow")} · ${name(l)}` : t("firstLesson", { t: hhmm(upcoming.begin) })}{l.change && <span class="tag">{changeLabel(l.change.kind)}</span>}</span>
+          <span class="now-end">{inBreak ? t("startsAtIn", { t: hhmm(upcoming.begin), m: toMin(upcoming.begin) - nm }) : t("startsIn", { m: toMin(upcoming.begin) - nm })}</span>
+        </div>
+        <div class="now-next">
+          {inBreak
+            ? [l.room, l.teacherName].filter(Boolean).join(" · ")
+            : [name(l), l.room, t("lessonsCount", { n: periods.length }), t("lastEnds", { t: hhmm(periods[periods.length - 1].end) })].filter(Boolean).join(" · ")}
+        </div>
       </div>
     );
   }
 
   const tp = tomorrow ? byPeriod({ ...tomorrow, lessons: liveLessons(tomorrow) }) : [];
   return (
-    <div class="now-card calm">
-      <div class="now-label">{periods.length ? t("schoolOver") : day?.off ?? t("noSchoolToday")}</div>
+    <div class="now-card">
+      <div class="now-top"><span class="now-title">{periods.length ? t("schoolOver") : day?.off ?? t("noSchoolToday")}</span></div>
       {tomorrow && tp.length > 0 && (
-        <>
-          <div class="now-title">{t("dayStarts", { d: cap(fmtRelDay(tomorrow.date!, today())), t: tp[0].begin })}</div>
-          <div class="now-meta">
-            {tp.map((p) => p.lessons[0].subject).join(" · ")}
-          </div>
-          <div class="now-count">{t("lessonsCount", { n: tp.length })} · {t("lastEnds", { t: tp[tp.length - 1].end })}</div>
-        </>
+        <div class="now-next">
+          {t("dayStarts", { d: cap(fmtRelDay(tomorrow.date!, today())), t: hhmm(tp[0].begin) })} · {t("lessonsCount", { n: tp.length })} · {t("lastEnds", { t: hhmm(tp[tp.length - 1].end) })}
+        </div>
       )}
     </div>
   );
@@ -150,11 +153,11 @@ function Changes({ weeks, onLesson }: { weeks: (Week | undefined)[]; onLesson: (
     .flatMap((d) => d.lessons.filter((l) => l.change).map((l) => ({ d, l }))), [weeks]);
   if (!items.length) return null;
   return (
-    <Section title={t("upcomingChanges")}>
-      <div class="card-list">
+    <Section title={t("upcomingChanges")} action={<SectionLink label={t("tabTimetable")} onClick={() => go("/timetable")} />}>
+      <div class="stack">
         {items.slice(0, 8).map(({ d, l }) => (
-          <Row icon="swap" accent="#f59e0b" onClick={() => onLesson(l, d)}
-            title={<>{fmtRelDay(d.date!, td)} · {l.hour ? `${t("period", { n: l.hour })} · ` : ""}{l.subjectName || l.subject || changeLabel(l.change!.kind)}</>}
+          <Row icon={l.change!.kind === "removed" ? "x-circle" : "swap"} iconColor={l.change!.kind === "removed" ? "var(--er)" : "var(--wn)"} onClick={() => onLesson(l, d)}
+            title={<>{cap(fmtRelDay(d.date!, td))} · {l.hour ? `${t("period", { n: l.hour })} · ` : ""}{l.subjectName || l.subject || changeLabel(l.change!.kind)}</>}
             sub={l.change!.text || changeLabel(l.change!.kind)} />
         ))}
       </div>
@@ -162,15 +165,16 @@ function Changes({ weeks, onLesson }: { weeks: (Week | undefined)[]; onLesson: (
   );
 }
 
-function DueSoon() {
-  const hw = useHomework();
+function DueSoon({ hw }: { hw?: Homework[] }) {
   const td = today();
-  const soon = (hw.data ?? []).filter((h) => !h.done && !h.closed && h.due >= td && h.due <= addDays(td, 3)).sort((a, b) => a.due.localeCompare(b.due));
+  const soon = (hw ?? []).filter((h) => !h.done && !h.closed && h.due >= td && h.due <= addDays(td, 3)).sort((a, b) => a.due.localeCompare(b.due));
   if (!soon.length) return null;
   return (
-    <Section title={t("dueSoon")} action={<button class="link" onClick={() => go("/homework")}>{t("homework")}</button>}>
-      <div class="card-list">
-        {soon.map((h) => <Row icon="book" accent={subjectColor(h.subject)} title={`${h.subjectName} · ${fmtRelDay(h.due, td)}`} sub={<span class="clamp2">{h.text}</span>} onClick={() => go("/homework")} />)}
+    <Section title={t("dueSoon")} action={<SectionLink label={t("homework")} onClick={() => go("/homework")} />}>
+      <div class="stack">
+        {soon.map((h) => (
+          <Row icon="notebook" title={<span class="clamp2">{h.subjectName} · {h.text}</span>} sub={t("due", { d: fmtRelDay(h.due, td) })} onClick={() => go("/homework")} />
+        ))}
       </div>
     </Section>
   );
@@ -186,9 +190,12 @@ function Upcoming() {
   ].sort((a, b) => a.date.localeCompare(b.date));
   if (!items.length) return null;
   return (
-    <Section title={t("upcoming")} action={<button class="link" onClick={() => go("/calendar")}>{t("tabCalendar")}</button>}>
-      <div class="card-list">
-        {items.slice(0, 6).map((e) => <Row icon={e.cls ? "users" : "cal"} accent={e.cls ? "#8b5cf6" : "#0ea5e9"} title={e.title} sub={`${fmtRelDay(e.date, td)} · ${e.sub}`} onClick={() => go("/calendar", { d: e.date })} />)}
+    <Section title={t("upcoming")} action={<SectionLink label={t("tabCalendar")} onClick={() => go("/calendar")} />}>
+      <div class="stack">
+        {items.slice(0, 6).map((e) => (
+          <Row icon={e.cls ? "users" : "calendar-dots"} iconColor={e.cls ? "var(--ac)" : SCHOOL_EVENT} title={e.title}
+            sub={[cap(fmtRelDay(e.date, td)), e.sub].filter(Boolean).join(" · ")} onClick={() => go("/calendar", { d: e.date })} />
+        ))}
       </div>
     </Section>
   );
@@ -201,11 +208,11 @@ function NewGrades() {
     .sort((a, b) => b.m.date.localeCompare(a.m.date)).slice(0, 5);
   if (!recent.length) return null;
   return (
-    <Section title={t("newGrades")} action={<button class="link" onClick={() => go("/grades")}>{t("tabGrades")}</button>}>
-      <div class="card-list">
+    <Section title={t("newGrades")} action={<SectionLink label={t("tabGrades")} onClick={() => go("/grades")} />}>
+      <div class="stack">
         {recent.map(({ s, m }) => (
-          <Row title={s.name} sub={[m.caption, fmtDate(m.date)].filter(Boolean).join(" · ")} onClick={() => go("/grades", { s: s.id })}
-            right={<span class="mark" data-v={m.value ?? ""}>{m.text}</span>} />
+          <Row icon="chart-line-up" title={s.name} sub={[m.caption, fmtDate(m.date)].filter(Boolean).join(" · ")} onClick={() => go("/grades", { s: s.id })}
+            right={<span class="row-right">{m.text}</span>} />
         ))}
       </div>
     </Section>

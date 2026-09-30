@@ -2,40 +2,50 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Icon, type IconName } from "./icons";
 import { back, pushCloser } from "./router";
-import { t } from "../lib/i18n";
+import { t, type TKey } from "../lib/i18n";
 import { online } from "../lib/store";
 import { AuthError } from "../lib/bakalari";
 import { NetError } from "../lib/net";
 import { iosBrowser, isIos, isStandalone } from "../lib/push";
 import { installUpdate, update, updating } from "../lib/update";
 
-export function Page({ title, sub, backable, actions, children, wide }: {
-  title: ComponentChildren; sub?: ComponentChildren; backable?: boolean; actions?: ComponentChildren; children: ComponentChildren; wide?: boolean;
+/**
+ * A screen: sticky header (sub-line above the title), banners, content.
+ * Android: back caret · title · actions in one row. iPhone: "‹ Back" and actions above a large title (see styles.css).
+ */
+export function Page({ title, sub, backable, actions, children, wide, smallTitle }: {
+  title: ComponentChildren; sub?: ComponentChildren; backable?: boolean; actions?: ComponentChildren; children: ComponentChildren; wide?: boolean; smallTitle?: boolean;
 }) {
   return (
     <div class={`page ${wide ? "wide" : ""}`}>
-      <header class="topbar">
-        {backable && <button class="icon-btn" onClick={back} aria-label={t("back")}><Icon name="back" /></button>}
-        <div class="topbar-title">
-          <h1>{title}</h1>
+      <header class={`topbar ${smallTitle ? "small-title" : ""} ${backable || actions ? "" : "no-nav"}`}>
+        {backable && (
+          <button class="topbar-back" onClick={back} aria-label={t("back")}>
+            <Icon name="caret-left" size={22} /><span>{t("back")}</span>
+          </button>
+        )}
+        <div class="topbar-text">
           {sub && <div class="topbar-sub">{sub}</div>}
+          <h1>{title}</h1>
         </div>
         <div class="topbar-actions">{actions}</div>
       </header>
-      {!online.value && <div class="banner">{t("offline")}</div>}
+      {!online.value && <div class="banner"><Icon name="wifi-slash" size={16} />{t("offline")}</div>}
       {update.value && (
-        <div class="banner soft update">
+        <div class="banner accent">
           <span class="grow">{updating.value === "permission" ? t("updateAllow") : updating.value === "error" ? t("updateFail") : t("updateAvail", { v: update.value.latest })}</span>
           <button class="btn small" disabled={updating.value === "busy"} onClick={installUpdate}>{updating.value === "busy" ? t("updateBusy") : t("updateNow")}</button>
         </div>
       )}
-      <IosInstall dismissible />
       <main class="content">{children}</main>
     </div>
   );
 }
 
-export function Sheet({ open, onClose, title, children, full }: { open: boolean; onClose: () => void; title?: ComponentChildren; children: ComponentChildren; full?: boolean }) {
+/** Bottom sheet. Registers with the Android back button while open. */
+export function Sheet({ open, onClose, title, sub, children, full, closeButton = true }: {
+  open: boolean; onClose: () => void; title?: ComponentChildren; sub?: ComponentChildren; children: ComponentChildren; full?: boolean; closeButton?: boolean;
+}) {
   const [shown, setShown] = useState(open);
   useEffect(() => {
     if (open) { setShown(true); return pushCloser(onClose); }
@@ -49,19 +59,22 @@ export function Sheet({ open, onClose, title, children, full }: { open: boolean;
         <div class="sheet-grip" />
         {title && (
           <div class="sheet-head">
-            <h2>{title}</h2>
-            <button class="icon-btn" onClick={onClose} aria-label={t("close")}><Icon name="close" /></button>
+            <h3>{title}</h3>
+            {closeButton && <button class="icon-btn" onClick={onClose} aria-label={t("close")}><Icon name="x" size={20} /></button>}
           </div>
         )}
+        {sub && <div class="sheet-sub">{sub}</div>}
         <div class="sheet-body">{children}</div>
       </div>
     </div>
   );
 }
 
-export function Segmented<T extends string>({ value, options, onChange, small }: { value: T; options: { v: T; label: ComponentChildren }[]; onChange: (v: T) => void; small?: boolean }) {
+export function Segmented<T extends string | number>({ value, options, onChange, small, fit }: {
+  value: T; options: { v: T; label: ComponentChildren }[]; onChange: (v: T) => void; small?: boolean; fit?: boolean;
+}) {
   return (
-    <div class={`seg ${small ? "small" : ""}`} role="tablist">
+    <div class={`seg ${small ? "small" : ""} ${fit ? "fit" : ""}`} role="tablist">
       {options.map((o) => (
         <button role="tab" aria-selected={o.v === value} class={o.v === value ? "on" : ""} onClick={() => onChange(o.v)}>{o.label}</button>
       ))}
@@ -75,10 +88,10 @@ export function Loading() {
   return <div class="center-box"><Spinner /></div>;
 }
 
-export function Empty({ icon = "info", text, children }: { icon?: IconName; text: ComponentChildren; children?: ComponentChildren }) {
+export function Empty({ icon = "info", text, children, small }: { icon?: IconName; text: ComponentChildren; children?: ComponentChildren; small?: boolean }) {
   return (
-    <div class="empty">
-      <div class="empty-icon"><Icon name={icon} size={28} /></div>
+    <div class={`empty ${small ? "small" : ""}`}>
+      {!small && <Icon name={icon} size={40} />}
       <p>{text}</p>
       {children}
     </div>
@@ -96,35 +109,42 @@ export function errorText(e: unknown): string {
 export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
     <div class="error-box">
-      <Icon name="alert" />
+      <Icon name="warning" size={20} />
       <span class="grow">{errorText(error)}</span>
       {onRetry && <button class="btn small ghost" onClick={onRetry}>{t("retry")}</button>}
     </div>
   );
 }
 
+/** Small uppercase label with an optional link on the right, then the content. */
 export function Section({ title, action, children }: { title?: ComponentChildren; action?: ComponentChildren; children: ComponentChildren }) {
   return (
     <section class="section">
-      {(title || action) && <div class="section-head"><h3>{title}</h3>{action}</div>}
+      {(title || action) && <div class="section-head"><span class="label">{title}</span>{action}</div>}
       {children}
     </section>
   );
 }
 
-export function Row({ icon, title, sub, right, onClick, chevron, accent }: {
-  icon?: IconName; title: ComponentChildren; sub?: ComponentChildren; right?: ComponentChildren; onClick?: () => void; chevron?: boolean; accent?: string;
+export function SectionLink({ label, onClick }: { label: ComponentChildren; onClick: () => void }) {
+  return <button class="link" onClick={onClick}>{label}</button>;
+}
+
+export function Row({ icon, iconColor, iconFill, title, sub, right, badge, onClick, chevron, big, class: cls }: {
+  icon?: IconName; iconColor?: string; iconFill?: boolean; title: ComponentChildren; sub?: ComponentChildren; right?: ComponentChildren; badge?: ComponentChildren;
+  onClick?: () => void; chevron?: boolean; big?: boolean; class?: string;
 }) {
   const Tag = onClick ? "button" : "div";
   return (
-    <Tag class={`row ${onClick ? "tap" : ""}`} onClick={onClick}>
-      {icon && <span class="row-icon" style={accent ? { color: accent, background: `${accent}1f` } : undefined}><Icon name={icon} size={20} /></span>}
+    <Tag class={`row ${big ? "big" : ""} ${cls ?? ""}`} onClick={onClick}>
+      {icon && <span class="row-icon" style={iconColor ? { color: iconColor } : undefined}><Icon name={icon} size={big ? 22 : 20} fill={iconFill} /></span>}
       <span class="row-main">
         <span class="row-title">{title}</span>
         {sub && <span class="row-sub">{sub}</span>}
       </span>
+      {badge && <span class="row-badge">{badge}</span>}
       {right}
-      {chevron && <Icon name="chev" size={18} class="muted" />}
+      {chevron && <Icon name="caret-right" size={16} class="chev" />}
     </Tag>
   );
 }
@@ -138,17 +158,26 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
   );
 }
 
-/** Stable pleasant colour per subject abbreviation (same in every view, public or logged-in). */
+export function SwitchRow({ label, v, on, sub }: { label: string; v: boolean; on: (v: boolean) => void; sub?: ComponentChildren }) {
+  return (
+    <div class="row">
+      <span class="row-main"><span class="row-title">{label}</span>{sub && <span class="row-sub">{sub}</span>}</span>
+      <Switch checked={v} onChange={on} label={label} />
+    </div>
+  );
+}
+
+/** Stable colour per subject abbreviation (same in every view, public or logged-in). Lightness follows the theme. */
 export function subjectColor(key: string): string {
   let h = 0;
   for (const c of key.toUpperCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return `hsl(${h % 360} 62% 52%)`;
+  return `oklch(var(--subj-l) .11 ${h % 360})`;
 }
 
 export function Updated({ at, loading, onRefresh }: { at?: number; loading?: boolean; onRefresh: () => void }) {
   return (
     <button class="updated" onClick={onRefresh} disabled={loading}>
-      {loading ? <Spinner small /> : <Icon name="refresh" size={15} />}
+      {loading ? <Spinner small /> : <Icon name="arrows-clockwise" size={14} />}
       {at ? t("updatedAt", { t: new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }) : t("loading")}
     </button>
   );
@@ -169,32 +198,37 @@ export function usePullToRefresh(onRefresh: () => void) {
   }, [onRefresh]);
 }
 
-/** iPhone only, in a browser tab (not the installed app): explains how to add the page to the home screen. */
+/** iPhone only, in a browser tab (not the installed app): how to add the page to the home screen. */
 export function IosInstall({ dismissible }: { dismissible?: boolean }) {
-  const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(() => !!dismissible && localStorage.getItem("bp.iosTip") === "1");
+  const [more, setMore] = useState(false);
   const [copied, setCopied] = useState(false);
   if (!isIos() || isStandalone() || hidden) return null;
   const br = iosBrowser();
   const copy = () => navigator.clipboard?.writeText(location.origin).then(() => setCopied(true)).catch(() => {});
+  const steps = (br === "safari" ? ["iosS2", "iosS3", "iosS4", "iosS5"] : ["iosS1", "iosS2", "iosS3", "iosS4", "iosS5"]) as TKey[];
   return (
-    <>
-      <div class="banner soft update">
-        <span class="grow">{t("iosBanner")}</span>
-        <button class="btn small" onClick={() => setOpen(true)}>{t("iosHow")}</button>
-        {dismissible && <button class="btn small ghost" onClick={() => { localStorage.setItem("bp.iosTip", "1"); setHidden(true); }}>{t("iosLater")}</button>}
+    <div class="install-card">
+      <div class="ic-head"><Icon name="export" size={20} />{t("iosTitle")}</div>
+      {br !== "safari" && <p class="hint" style={{ marginTop: "8px", color: "var(--wn)" }}>{t(br === "inapp" ? "iosInApp" : "iosOther")}</p>}
+      <ol>{(more ? steps : (["iosQ1", "iosQ2", "iosQ3"] as TKey[])).map((k) => <li>{t(k)}</li>)}</ol>
+      <p class="hint" style={{ marginTop: "8px" }}>{more ? `${t("iosWhy")} ${t("iosSeparate")}` : t("iosQPush")}</p>
+      <div class="ic-foot">
+        {br !== "safari" && <button class="btn small" onClick={copy}><Icon name="copy" size={16} />{copied ? t("iosCopied") : t("iosCopy")}</button>}
+        {!more && <button class="link" onClick={() => setMore(true)}>{t("iosMore")}</button>}
+        {dismissible && <button class="link" style={{ marginLeft: "auto", color: "var(--mu)" }} onClick={() => { localStorage.setItem("bp.iosTip", "1"); setHidden(true); }}>{t("iosLater")}</button>}
       </div>
-      <Sheet open={open} onClose={() => setOpen(false)} title={t("iosTitle")}>
-        <div class="form">
-          <p class="hint">{t("iosWhy")}</p>
-          {br !== "safari" && <p class="banner warn">{t(br === "inapp" ? "iosInApp" : "iosOther")}</p>}
-          {br !== "safari" && <button class="btn block ghost" onClick={copy}>{copied ? t("iosCopied") : t("iosCopy")}</button>}
-          <ol class="steps">
-            {(br === "safari" ? ["iosS2", "iosS3", "iosS4", "iosS5"] : ["iosS1", "iosS2", "iosS3", "iosS4", "iosS5"]).map((k) => <li>{t(k as any)}</li>)}
-          </ol>
-          <p class="hint">{t("iosSeparate")}</p>
-        </div>
-      </Sheet>
-    </>
+    </div>
+  );
+}
+
+/** "Sign in" empty state for login-only screens. */
+export function NeedLogin({ onLogin }: { onLogin: () => void }) {
+  return (
+    <div class="empty">
+      <Icon name="lock-key" size={40} />
+      <p>{t("loginNeeded")}</p>
+      <button class="btn" onClick={onLogin}>{t("loginAction")}</button>
+    </div>
   );
 }

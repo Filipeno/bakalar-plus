@@ -2,11 +2,11 @@ import { useState } from "preact/hooks";
 import { t, fmtDate } from "../lib/i18n";
 import { useMarks } from "../lib/data";
 import type { Mark, SubjectMarks } from "../lib/bakalari";
+import { addDays, today } from "../lib/model";
 import { user } from "../lib/store";
 import { Icon } from "../ui/icons";
-import { Empty, ErrorBox, Loading, Page, Section, subjectColor, Updated, usePullToRefresh } from "../ui/kit";
-import { go, route } from "../ui/router";
-import { NeedLogin } from "./More";
+import { Empty, ErrorBox, Loading, NeedLogin, Page, Section, Segmented, Updated, usePullToRefresh } from "../ui/kit";
+import { go, isTab, route } from "../ui/router";
 
 export function weightedAverage(marks: { value: number | null; weight: number }[]): number | null {
   let s = 0, w = 0;
@@ -15,43 +15,50 @@ export function weightedAverage(marks: { value: number | null; weight: number }[
 }
 
 const fmtAvg = (x: number | null) => (x === null ? "–" : x.toFixed(2).replace(".", ","));
-const avgClass = (x: number | null) => (x === null ? "" : x < 1.5 ? "a1" : x < 2.5 ? "a2" : x < 3.5 ? "a3" : x < 4.5 ? "a4" : "a5");
+const avgClass = (x: number | null) => (x === null ? "" : x <= 1.5 ? "good" : x <= 2.5 ? "" : "bad");
 const parseAvg = (s: string) => { const n = parseFloat(s.replace(",", ".")); return isNaN(n) ? null : n; };
 
 export function Grades() {
   const marks = useMarks();
   usePullToRefresh(marks.reload);
-  if (!user.value) return <Page title={t("tabGrades")}><NeedLogin /></Page>;
+  const backable = !isTab("/grades");
+  if (!user.value) return <Page title={t("tabGrades")} backable={backable}><NeedLogin onLogin={() => go("/login")} /></Page>;
   const sid = route.value.q.s;
   const subj = marks.data?.find((s) => s.id === sid);
   if (sid && subj) return <SubjectDetail s={subj} />;
 
   const avgs = (marks.data ?? []).map((s) => parseAvg(s.average) ?? weightedAverage(s.marks)).filter((x): x is number => x !== null);
   const overall = avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
+  const since = addDays(today(), -7);
+  const fresh = (marks.data ?? []).reduce((n, s) => n + s.marks.filter((m) => m.isNew || m.date >= since).length, 0);
 
   return (
-    <Page title={t("tabGrades")}>
+    <Page title={t("tabGrades")} sub={user.value.schoolName} backable={backable}>
       {marks.loading && !marks.data && <Loading />}
       {marks.error != null && <ErrorBox error={marks.error} onRetry={marks.reload} />}
-      {marks.data && !marks.data.length && <Empty icon="star" text={t("noGrades")} />}
+      {marks.data && !marks.data.length && <Empty icon="chart-line-up" text={t("noGrades")} />}
       {overall !== null && (
         <div class="overall">
-          <span>{t("overall")}</span>
-          <b class={`avg ${avgClass(overall)}`}>{fmtAvg(overall)}</b>
+          <b>{fmtAvg(overall)}</b>
+          <span>{t("overall")}<br />{t("newThisWeek", { n: fresh })}</span>
         </div>
       )}
-      <div class="subjects">
+      <div class="stack" style={{ marginTop: "12px" }}>
         {(marks.data ?? []).map((s) => {
           const avg = parseAvg(s.average) ?? weightedAverage(s.marks);
+          const maxW = Math.max(1, ...s.marks.map((m) => m.weight));
           return (
-            <button class="subject-card" onClick={() => go("/grades", { s: s.id })} style={{ "--c": subjectColor(s.abbrev) } as any}>
-              <div class="subject-head">
+            <button class="subject" onClick={() => go("/grades", { s: s.id })}>
+              <span class="subject-head">
                 <span class="subject-name">{s.name}</span>
-                <b class={`avg ${avgClass(avg)}`}>{s.average || fmtAvg(avg)}</b>
-              </div>
-              <div class="mark-row">
-                {s.marks.slice(0, 12).map((m) => <span class={`mark ${m.isNew ? "new" : ""}`} data-v={m.value ?? ""} data-w={m.weight > 1 ? "heavy" : ""}>{m.text}</span>)}
-              </div>
+                <span class={`avg ${avgClass(avg)}`}>{s.average || fmtAvg(avg)}</span>
+              </span>
+              <span class="marks">
+                {s.marks.slice(0, 12).map((m) => (
+                  <span class={`mark ${m.weight >= maxW ? "heavy" : ""} ${m.isNew ? "new" : ""}`}>{m.text}</span>
+                ))}
+                <span class="calc-link"><Icon name="calculator" size={13} />{t("calc")}</span>
+              </span>
             </button>
           );
         })}
@@ -63,8 +70,8 @@ export function Grades() {
 
 function SubjectDetail({ s }: { s: SubjectMarks }) {
   const [extra, setExtra] = useState<Mark[]>([]);
-  const [target, setTarget] = useState(2.5);
-  const [w, setW] = useState(1);
+  const [target, setTarget] = useState(1.5);
+  const [w, setW] = useState(() => Math.max(1, ...s.marks.map((m) => m.weight)));
   const all = [...s.marks, ...extra];
   const current = weightedAverage(s.marks);
   const withExtra = weightedAverage(all);
@@ -74,44 +81,46 @@ function SubjectDetail({ s }: { s: SubjectMarks }) {
   const W = all.reduce((a, m) => a + (m.value !== null ? m.weight : 0), 0);
   const need = (target * (W + w) - S) / w;
   // Lower is better: any grade up to `need` keeps the target. Show the worst grade that is still enough.
-  const needText = need < 1 ? t("impossible") : need >= 5 ? t("alreadyThere") : roundMark(need);
-  const weights = [...new Set([1, ...s.marks.map((m) => m.weight)])].sort((a, b) => a - b);
+  const there = need >= 5;
+  const needText = need < 1 ? "—" : there ? "✓" : roundMark(need);
+  const note = need < 1 ? t("impossible") : there ? t("alreadyThere") : "";
 
   const addMark = (v: number) => setExtra([...extra, { id: `x${extra.length}`, text: String(v), value: v, weight: w, caption: t("hypothetical"), theme: "", date: "", isNew: false }]);
 
   return (
     <Page title={s.name} backable sub={`${t("average")}: ${s.average || fmtAvg(current)}`}>
-      {s.pointsOnly && <div class="banner soft">{t("pointsOnly")}</div>}
-      <Section title={t("calculator")}>
-        <div class="calc">
-          <label class="calc-row">
-            <span>{t("target")}</span>
-            <input type="range" min="1" max="4.5" step="0.1" value={target} onInput={(e) => setTarget(+(e.target as HTMLInputElement).value)} />
-            <b class={`avg ${avgClass(target)}`}>{fmtAvg(target)}</b>
-          </label>
-          <div class="calc-row">
-            <span>{t("weight", { w: "" }).trim()}</span>
-            <div class="chips">{weights.map((x) => <button class={`chip ${x === w ? "on" : ""}`} onClick={() => setW(x)}>{x}</button>)}</div>
-          </div>
-          <div class="calc-result">
-            <span>{t("neededMark", { w })}</span>
-            <b>{needText}</b>
-          </div>
-          <div class="calc-row">
-            <span>{t("whatIf")}</span>
-            <div class="chips">{[1, 2, 3, 4, 5].map((v) => <button class="chip mark-chip" data-v={v} onClick={() => addMark(v)}>+{v}</button>)}</div>
-          </div>
-          {extra.length > 0 && (
-            <div class="calc-result">
-              <span>{t("newAverage")}</span>
-              <b class={`avg ${avgClass(withExtra)}`}>{fmtAvg(withExtra)}</b>
-              <button class="icon-btn" onClick={() => setExtra([])} aria-label={t("delete")}><Icon name="trash" size={18} /></button>
-            </div>
-          )}
+      {s.pointsOnly && <div class="banner">{t("pointsOnly")}</div>}
+      <div class="label">{t("calculator")}</div>
+      <div class="field-label">{t("goal")}</div>
+      <Segmented<number> value={target} onChange={setTarget} options={[
+        { v: 1.5, label: t("goal1") }, { v: 2.5, label: t("goal2") }, { v: 3.5, label: t("goal3") },
+      ]} />
+      <div class="field-label">{t("nextWeight")}</div>
+      <div class="stepper">
+        <button onClick={() => setW(Math.max(1, w - 1))} aria-label="−"><Icon name="minus" size={18} /></button>
+        <b>{w}</b>
+        <button onClick={() => setW(Math.min(10, w + 1))} aria-label="+"><Icon name="plus" size={18} /></button>
+      </div>
+      <div class="calc-box">
+        <div class="lead">{there ? t("alreadyThere") : t("needAtLeast", { w })}</div>
+        <div class="result">{needText}</div>
+        {note && !there && <div class="note">{note}</div>}
+      </div>
+
+      <div class="field-label">{t("whatIf")}</div>
+      <div class="chips">
+        {[1, 2, 3, 4, 5].map((v) => <button class="chip" onClick={() => addMark(v)}>+{v}</button>)}
+      </div>
+      {extra.length > 0 && (
+        <div class="row" style={{ marginTop: "10px" }}>
+          <span class="row-main"><span class="row-title">{t("newAverage")}</span></span>
+          <span class={`avg ${avgClass(withExtra)}`}>{fmtAvg(withExtra)}</span>
+          <button class="icon-btn" onClick={() => setExtra([])} aria-label={t("delete")}><Icon name="trash" size={18} /></button>
         </div>
-      </Section>
+      )}
+
       <Section title={t("tabGrades")}>
-        <div class="card-list">
+        <div class="stack">
           {[...extra].reverse().map((m) => <MarkRow m={m} hypo />)}
           {s.marks.map((m) => <MarkRow m={m} />)}
         </div>
@@ -131,12 +140,12 @@ function roundMark(x: number): string {
 function MarkRow({ m, hypo }: { m: Mark; hypo?: boolean }) {
   return (
     <div class={`row ${hypo ? "hypo" : ""}`}>
-      <span class="mark big" data-v={m.value ?? ""}>{m.text}</span>
+      <span class={`mark big ${m.isNew ? "new" : ""}`}>{m.text}</span>
       <span class="row-main">
         <span class="row-title">{m.caption || m.theme || "—"}</span>
         <span class="row-sub">{[m.date && fmtDate(m.date), t("weight", { w: m.weight }), m.theme !== m.caption ? m.theme : ""].filter(Boolean).join(" · ")}</span>
       </span>
-      {m.isNew && <span class="badge new">NEW</span>}
+      {m.isNew && <span class="tag new">NEW</span>}
     </div>
   );
 }

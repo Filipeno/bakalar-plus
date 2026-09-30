@@ -2,16 +2,27 @@ name = "bakalar-plus"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 
-# The web app (npm run build in ../web). /relay and /cal/* are handled by the Worker, everything else is static.
+# The web app (npm run build in ../web). /relay, /cal/*, /push/* and /me are handled by the Worker, the rest is static.
 [assets]
 directory = "../web/dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/relay", "/cal/*"]
+run_worker_first = ["/relay", "/cal/*", "/push/*", "/me"]
 
 [[d1_databases]]
 binding = "DB"
 database_name = "bakalar-plus"
 database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
 
-# Secret (not in this file): npx wrangler secret put SESSION_SECRET
+# Push checks: every minute the users whose last check is older than CHECK_INTERVAL_MIN get checked,
+# CHECK_BATCH at a time (the free plan allows 50 outgoing requests per run; one user needs about 5).
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+CHECK_INTERVAL_MIN = "10"
+CHECK_BATCH = "6"
+VAPID_SUBJECT = "mailto:REPLACE_WITH_YOUR_EMAIL"
+
+# Secrets (never in this file), see README: SESSION_SECRET, TOKEN_KEY, VAPID_PUBLIC, VAPID_PRIVATE_JWK
+#   npm run keys   -> prints fresh values

@@ -34,7 +34,7 @@ function load(school: string): CloudSession | null {
   } catch { return null; }
 }
 
-async function session(school: string): Promise<CloudSession> {
+export async function cloudSession(school: string): Promise<CloudSession> {
   const cached = load(school);
   if (cached) return cached;
   const r = await fetch(`${base()}/cal/session`, {
@@ -51,14 +51,14 @@ async function session(school: string): Promise<CloudSession> {
 }
 
 async function call<T>(school: string, method: string, path: string, body?: unknown): Promise<T> {
-  let s = await session(school);
+  let s = await cloudSession(school);
   const send = () => fetch(`${base()}${path}`, {
     method,
     headers: { Authorization: `Bearer ${s.token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   let r = await send();
-  if (r.status === 401) { localStorage.removeItem(KEY); s = await session(school); r = await send(); }
+  if (r.status === 401) { localStorage.removeItem(KEY); s = await cloudSession(school); r = await send(); }
   if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || `HTTP ${r.status}`);
   return r.status === 204 ? (null as T) : r.json();
 }

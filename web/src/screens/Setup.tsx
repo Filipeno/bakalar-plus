@@ -6,10 +6,11 @@ import * as bk from "../lib/bakalari";
 import { http, usesRelay } from "../lib/net";
 import { native, isAndroid } from "../lib/native";
 import { forgetCloud } from "../lib/cloud";
+import * as push from "../lib/push";
 import { clearCache, expired, patchSettings, settings, user, writeCache } from "../lib/store";
 import type { Target } from "../lib/model";
 import { Icon } from "../ui/icons";
-import { errorText, Page, Row, Section, Segmented, Spinner, Switch } from "../ui/kit";
+import { errorText, Page, Row, Section, Segmented, Sheet, Spinner, Switch } from "../ui/kit";
 import { go } from "../ui/router";
 import { TargetPicker } from "../ui/picker";
 
@@ -175,6 +176,7 @@ export function LoginForm({ onDone }: { onDone: () => void }) {
     <form class="form" onSubmit={submit}>
       <p class="hint">{t("loginText")}</p>
       {!isAndroid && school && usesRelay(school) && <p class="banner soft">{t("loginRelayNote")}</p>}
+      {!isAndroid && <p class="hint">{t("loginPushNote")}</p>}
       <label>{t("username")}<input autoComplete="username" autoCapitalize="off" autoCorrect="off" required value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} /></label>
       <label>{t("password")}<input type="password" autoComplete="current-password" required value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} /></label>
       {err && <p class="error-text">{err}</p>}
@@ -225,15 +227,16 @@ export function Settings() {
           ) : (
             <Row icon="user" title={t("loginAction")} chevron onClick={() => go("/login")} />
           )}
+          {user.value && <DeleteDataRow onDone={logout} />}
           {!user.value && s.publicOk && (
             <Row icon="users" title={t("myClass")} sub={s.myTarget?.name ?? "—"} chevron onClick={() => setPicker(true)} />
           )}
         </div>
       </Section>
 
-      <Section title={t("notifications")}>
-        {!isAndroid && <p class="hint">{t("notifyAndroidOnly")}</p>}
-        <div class={`card-list ${isAndroid ? "" : "disabled"}`}>
+      {!isAndroid && <WebPush />}
+      {isAndroid && <Section title={t("notifications")}>
+        <div class="card-list">
           <SwitchRow label={t("notifyChanges")} v={s.notify.changes} on={(v) => setNotify({ changes: v })} />
           {user.value && <SwitchRow label={t("notifyGrades")} v={s.notify.grades} on={(v) => setNotify({ grades: v })} />}
           {user.value && <SwitchRow label={t("notifyHomework")} v={s.notify.homework} on={(v) => setNotify({ homework: v })} />}
@@ -248,8 +251,8 @@ export function Settings() {
             </div>
           )}
         </div>
-        {isAndroid && <p class="hint">{t("widgetInfo")}</p>}
-      </Section>
+        <p class="hint">{t("widgetInfo")}</p>
+      </Section>}
 
       <Section title={t("language")}>
         <Segmented value={s.lang} onChange={(v) => patchSettings({ lang: v })} options={[{ v: "auto", label: "Auto" }, { v: "cs", label: "Čeština" }, { v: "en", label: "English" }]} />
@@ -278,5 +281,94 @@ function SwitchRow({ label, v, on }: { label: string; v: boolean; on: (v: boolea
       <span class="row-main"><span class="row-title">{label}</span></span>
       <Switch checked={v} onChange={on} label={label} />
     </div>
+  );
+}
+
+// ---------------- web push (iPhone PWA / desktop) ----------------
+
+function WebPush() {
+  const school = settings.value.school?.url ?? "";
+  const [st, setSt] = useState<{ registered: boolean; status?: string; prefs?: push.PushPrefs } | null>(push.saved() ? { registered: true } : { registered: false });
+  const [form, setForm] = useState(false);
+  const [u, setU] = useState("");
+  const [p, setP] = useState("");
+  const [prefs, setPrefs] = useState<push.PushPrefs>({ grades: true, changes: true });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    push.prefetchVapid();
+    push.pushStatus().then((x) => { if (x) { setSt(x); if (x.prefs) setPrefs(x.prefs); } });
+  }, []);
+
+  const iosNeedsInstall = push.isIos() && !push.isStandalone();
+  const blocked = typeof Notification !== "undefined" && Notification.permission === "denied";
+
+  const enable = async (e: Event) => {
+    e.preventDefault();
+    setBusy(true); setMsg("");
+    try {
+      await push.enablePush(school, u.trim(), p, prefs);     // asks for permission first, inside this gesture
+      setP(""); setForm(false);
+      setSt({ registered: true, status: "active", prefs });
+    } catch (err) {
+      const c = (err as push.PushError).code;
+      setMsg(c === "denied" ? t("pushDenied") : c === "bad_login" ? t("badLogin") : t("pushFailed", { e: c ?? (err as Error).message }));
+    }
+    setBusy(false);
+  };
+  const changePrefs = (x: Partial<push.PushPrefs>) => { const n = { ...prefs, ...x }; setPrefs(n); if (st?.registered) push.setPushPrefs(n); };
+
+  return (
+    <Section title={t("pushTitle")}>
+      {!push.pushSupported() && !iosNeedsInstall && <p class="hint">{t("pushUnsupported")}</p>}
+      {iosNeedsInstall && <p class="banner soft">{t("pushIosHint")}</p>}
+      {blocked && <p class="banner warn">{t("pushDenied")}</p>}
+      {st?.status === "relogin" && <p class="banner warn">{t("pushRelogin")}</p>}
+      {push.pushSupported() && !iosNeedsInstall && (
+        <div class="card-list">
+          <SwitchRow label={t("notifyChanges")} v={prefs.changes} on={(v) => changePrefs({ changes: v })} />
+          {user.value && <SwitchRow label={t("notifyGrades")} v={prefs.grades} on={(v) => changePrefs({ grades: v })} />}
+          {st?.registered && st.status !== "relogin" ? (
+            <>
+              <Row icon="bell" title={t("pushActive")} right={<button class="btn small ghost" onClick={async () => { await push.disablePush(); setSt({ registered: false }); }}>{t("pushOff")}</button>} />
+              <Row icon="check" title={t("pushTest")} onClick={async () => setMsg(t("pushTestSent", { n: await push.sendTestPush() }))} />
+            </>
+          ) : user.value ? (
+            <Row icon="bell" title={t("pushOn")} chevron onClick={() => setForm(true)} />
+          ) : (
+            <Row icon="user" title={t("loginNeeded")} chevron onClick={() => go("/login")} />
+          )}
+        </div>
+      )}
+      {msg && <p class="hint">{msg}</p>}
+      <Sheet open={form} onClose={() => setForm(false)} title={t("pushOn")}>
+        <form class="form" onSubmit={enable}>
+          <p class="hint">{t("pushServerNote")}</p>
+          <p class="hint"><b>{t("pushLoginAgain")}</b></p>
+          <label>{t("username")}<input autoComplete="username" autoCapitalize="off" autoCorrect="off" required value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} /></label>
+          <label>{t("password")}<input type="password" autoComplete="current-password" required value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} /></label>
+          {msg && <p class="error-text">{msg}</p>}
+          <button class="btn block" disabled={busy}>{busy ? <Spinner small /> : t("pushOn")}</button>
+        </form>
+      </Sheet>
+    </Section>
+  );
+}
+
+function DeleteDataRow({ onDone }: { onDone: () => Promise<void> | void }) {
+  const [sure, setSure] = useState(false);
+  const [msg, setMsg] = useState("");
+  const run = async () => {
+    if (!sure) { setSure(true); return; }
+    try {
+      await push.deleteServerData(settings.value.school?.url ?? "");
+      await onDone();
+      setMsg(t("deleted"));
+    } catch (e) { setMsg(errorText(e)); }
+    setSure(false);
+  };
+  return (
+    <Row icon="trash" accent="#ef4444" title={sure ? t("deleteDataSure") : t("deleteData")} sub={msg || t("deleteDataHint")} onClick={run} />
   );
 }

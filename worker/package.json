@@ -7,10 +7,13 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:init": "wrangler d1 execute bakalar-plus --remote --file schema.sql",
-    "db:init:local": "wrangler d1 execute bakalar-plus --local --file schema.sql"
+    "db:init:local": "wrangler d1 execute bakalar-plus --local --file schema.sql",
+    "keys": "node scripts/keys.mjs",
+    "test": "node test/webpush.test.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260930.2",
+    "http_ece": "^1.2.1",
     "typescript": "^7.0.2",
     "wrangler": "^4.145.0"
   }

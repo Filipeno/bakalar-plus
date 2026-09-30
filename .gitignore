@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+
+# Android build output and the signing key (keep the key safe, never commit it)
+android/build/
+android/*.apk
+android/*.idsig
+android/release.keystore
+android/keystore.pass
+android/cloud-url.txt

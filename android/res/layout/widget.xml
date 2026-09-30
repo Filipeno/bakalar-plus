@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_bg">
+    <TextView android:id="@+id/w_head" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="@color/w_muted" android:textSize="12sp" android:textStyle="bold" android:letterSpacing="0.06"
+        android:paddingStart="4dp" android:paddingBottom="6dp" android:text="BAKALÁŘI+" />
+    <LinearLayout android:id="@+id/w_now" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:background="@drawable/now_bg" android:padding="12dp">
+        <TextView android:id="@+id/w_now_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="#D9FFFFFF" android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.08" />
+        <TextView android:id="@+id/w_now_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+        <TextView android:id="@+id/w_now_meta" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#E6FFFFFF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/w_rows" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingTop="6dp" />
+</LinearLayout>

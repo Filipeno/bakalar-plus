@@ -1,0 +1,17 @@
+name = "bakalar-plus"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# The web app (npm run build in ../web). /relay and /cal/* are handled by the Worker, everything else is static.
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/relay", "/cal/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bakalar-plus"
+database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
+
+# Secret (not in this file): npx wrangler secret put SESSION_SECRET

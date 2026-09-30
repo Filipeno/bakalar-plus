@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <!-- Adaptive icon foreground: keep everything inside the central 66dp safe zone (21..87). -->
+  <rect x="29" y="32" width="50" height="44" rx="7" fill="#fff"/>
+  <rect x="29" y="32" width="50" height="11" rx="5.5" fill="#e0e7ff"/>
+  <g fill="#6366f1">
+    <rect x="35" y="49" width="10" height="8" rx="2"/><rect x="49" y="49" width="10" height="8" rx="2" opacity=".55"/><rect x="63" y="49" width="10" height="8" rx="2" opacity=".3"/>
+    <rect x="35" y="61" width="10" height="8" rx="2" opacity=".3"/><rect x="49" y="61" width="10" height="8" rx="2"/>
+  </g>
+  <circle cx="72" cy="69" r="11.5" fill="#f59e0b" stroke="#fff" stroke-width="2.6"/>
+  <path d="M72 63.5v11M66.5 69h11" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+</svg>

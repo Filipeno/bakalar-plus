@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bakaláři+</string>
+    <string name="widget_name">Rozvrh – teď a dál</string>
+    <string name="widget_desc">Aktuální a další hodiny s učebnou</string>
+</resources>

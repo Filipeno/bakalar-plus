@@ -1,0 +1,170 @@
+import { computed, signal } from "@preact/signals";
+
+export type Lang = "cs" | "en";
+
+const cs = {
+  appName: "Bakaláři+",
+  // tabs
+  tabToday: "Dnes", tabTimetable: "Rozvrh", tabGrades: "Známky", tabCalendar: "Kalendář", tabMore: "Více",
+  // common
+  loading: "Načítám…", retry: "Zkusit znovu", cancel: "Zrušit", save: "Uložit", delete: "Smazat", edit: "Upravit", close: "Zavřít",
+  back: "Zpět", done: "Hotovo", search: "Hledat", add: "Přidat", offline: "Jsi offline – zobrazuji uložená data",
+  updatedAt: "Aktualizováno {t}", errorGeneric: "Něco se nepovedlo: {e}", noData: "Nic tu není",
+  loginNeeded: "Pro tuhle část se přihlas svým účtem Bakalářů.", loginAction: "Přihlásit se",
+  expired: "Přihlášení vypršelo, přihlas se znovu.",
+  // onboarding
+  welcomeTitle: "Rozvrh celé školy do kapsy",
+  welcomeText: "Rozvrhy všech tříd, učitelů a učeben, suplování, známky, úkoly a společný kalendář třídy.",
+  start: "Začít", pickSchool: "Najdi svou školu", townSearch: "Město (např. Praha)", schoolsIn: "Školy – {town}",
+  manualUrl: "Zadat adresu ručně", schoolUrl: "Adresa Bakalářů školy", schoolUrlHint: "Např. bakalari.skola.cz – najdeš ji v adrese, kde se přihlašuješ.",
+  checking: "Ověřuji…", continue: "Pokračovat",
+  loginTitle: "Přihlášení", loginText: "Přihlášení odemkne tvůj rozvrh, známky, úkoly, zprávy a kalendář třídy. Heslo se posílá jen do Bakalářů tvé školy.",
+  loginRelayNote: "Tahle škola neumožňuje přímé připojení z prohlížeče, takže přihlášení půjde přes náš server (heslo se neukládá). V aplikaci pro Android jde přímo.",
+  username: "Uživatelské jméno", password: "Heslo", signIn: "Přihlásit", skipLogin: "Pokračovat bez přihlášení",
+  badLogin: "Špatné jméno nebo heslo.", pickClass: "Která je tvoje třída?", pickClassHint: "Ukážu ti její rozvrh na hlavní obrazovce. Změníš to v nastavení.",
+  publicOff: "Tahle škola nemá veřejný rozvrh, rozvrhy ostatních tříd a učitelů proto nepůjdou. Po přihlášení uvidíš svůj.",
+  // today
+  goodMorning: "Dobré ráno", goodDay: "Dobrý den", goodEvening: "Dobrý večer",
+  now: "Teď", next: "Další", breakNow: "Přestávka", endsIn: "končí za {m} min", startsIn: "začíná za {m} min", at: "v {t}",
+  noSchoolToday: "Dnes se neučí", schoolOver: "Vyučování skončilo", tomorrow: "Zítra", dayOff: "Volno",
+  todayLessons: "Dnešní rozvrh", upcomingChanges: "Změny v rozvrhu", dueSoon: "Úkoly na nejbližší dny", upcoming: "Nadcházející",
+  newGrades: "Nové známky", firstLesson: "Začínáš v {t}", dayStarts: "{d} začínáš v {t}", lessonsCount: "{n} hodin", lastEnds: "konec {t}",
+  // timetable
+  my: "Můj rozvrh", thisWeek: "Tento týden", nextWeek: "Příští týden", permanent: "Stálý",
+  classes: "Třídy", teachers: "Učitelé", rooms: "Učebny", favourites: "Oblíbené", searchTarget: "Hledat třídu, učitele, učebnu",
+  weekView: "Týden", dayView: "Den", noLessons: "Žádné hodiny", period: "{n}. hod", group: "Skupina", theme: "Téma", teacher: "Učitel",
+  room: "Učebna", subject: "Předmět", openTimetable: "Rozvrh: {x}", cancelled: "Odpadá",
+  change_substitution: "Suplování", change_room: "Změna učebny", change_removed: "Odpadá", change_added: "Navíc", change_joined: "Spojeno",
+  change_absence: "Absence", change_other: "Změna", addFav: "Přidat do oblíbených", removeFav: "Odebrat z oblíbených",
+  // grades
+  average: "Průměr", overall: "Celkový průměr", weight: "váha {w}", noGrades: "Zatím žádné známky",
+  calculator: "Kalkulačka známek", whatIf: "Co kdyby…", addMark: "Přidat známku", target: "Chci mít průměr", needed: "Potřebuješ",
+  neededMark: "Známka s vahou {w}:", impossible: "S jednou známkou to nepůjde", alreadyThere: "To už máš 🎉", newAverage: "Nový průměr",
+  pointsOnly: "Tento předmět se hodnotí body.", hypothetical: "Přidané (jen v kalkulačce)",
+  // calendar
+  classCalendar: "Kalendář třídy {c}", addEntry: "Přidat do kalendáře třídy", kind_test: "Test", kind_homework: "Úkol", kind_event: "Akce", kind_other: "Jiné",
+  title: "Název", note: "Poznámka", date: "Datum", time: "Čas (nepovinné)", fromSchool: "Ze školy", fromClass: "Od spolužáků", addedBy: "přidal(a) {a}",
+  report: "Nahlásit nevhodné", reported: "Nahlášeno, díky.", deleteConfirm: "Opravdu smazat?", noEvents: "Žádné akce",
+  cloudOff: "Sdílený kalendář třídy je dostupný v aplikaci pro Android a ve webové verzi.", homeworkDue: "Úkol: {s}",
+  // more
+  homework: "Domácí úkoly", messages: "Zprávy", absence: "Absence", compare: "Společné volno", whereNow: "Kde je…",
+  freeRooms: "Volné učebny", settings: "Nastavení", about: "O aplikaci",
+  // homework / messages / absence
+  hwTodo: "K odevzdání", hwAll: "Všechny",
+  due: "do {d}", doneLabel: "Hotovo", noHomework: "Žádné úkoly", noMessages: "Žádné zprávy", noticeboard: "Nástěnka",
+  missed: "Zameškáno", lessons: "hodin", lateCount: "pozdní příchody: {n}", unsolved: "Neomluvené hodiny: {n}", threshold: "Limit {p} %",
+  // compare
+  compareHint: "Vyber třídy nebo učitele a uvidíš, kdy mají všichni volno a kdy komu končí škola.",
+  addToCompare: "Přidat", commonFree: "Společné volno", allFree: "všichni volno", endsAt: "Konec", nothingInCommon: "Žádné společné volno v době vyučování",
+  // where
+  whereHint: "Kde je teď učitel nebo třída?", rightNow: "Právě teď", free: "Volno", notInSchool: "Dnes už nic", nextLessonAt: "Další: {s} v {t} ({r})",
+  pickTime: "Čas", // free rooms
+  freeRoomsHint: "Stáhne rozvrhy všech učeben (jednou za týden, asi {mb} MB) a ukáže, které jsou volné.",
+  download: "Stáhnout", freeAt: "Volné {p}", progress: "{a} z {b}",
+  // settings
+  language: "Jazyk", appearance: "Vzhled", themeAuto: "Podle systému", themeLight: "Světlý", themeDark: "Tmavý",
+  school: "Škola", changeSchool: "Změnit školu", account: "Účet", logout: "Odhlásit", loggedAs: "Přihlášen(a): {n}",
+  myClass: "Moje třída (bez přihlášení)", notifications: "Upozornění", notifyChanges: "Změny v rozvrhu", notifyGrades: "Nové známky",
+  notifyHomework: "Nové úkoly", notifyMessages: "Nové zprávy", notifyEvening: "Večer připomenout zítřek", eveningAt: "Připomenutí v",
+  notifyAndroidOnly: "Upozornění fungují v aplikaci pro Android.", widgetInfo: "Widget: dlouze podrž plochu → Widgety → Bakaláři+.",
+  clearCache: "Smazat uložená data", cacheCleared: "Smazáno", version: "Verze {v}", sourceCode: "Zdrojový kód na GitHubu",
+  privacy: "Heslo zůstává v telefonu (šifrované klíčem Androidu). Kalendář třídy ukládá jen to, co do něj napíšete, a tvé jméno ve tvaru „Jan N.“.",
+  showWeekend: "Zobrazit víkend",
+};
+
+type Dict = typeof cs;
+
+const en: Dict = {
+  appName: "Bakaláři+",
+  tabToday: "Today", tabTimetable: "Timetable", tabGrades: "Grades", tabCalendar: "Calendar", tabMore: "More",
+  loading: "Loading…", retry: "Try again", cancel: "Cancel", save: "Save", delete: "Delete", edit: "Edit", close: "Close",
+  back: "Back", done: "Done", search: "Search", add: "Add", offline: "You're offline – showing saved data",
+  updatedAt: "Updated {t}", errorGeneric: "Something went wrong: {e}", noData: "Nothing here",
+  loginNeeded: "Sign in with your Bakaláři account for this part.", loginAction: "Sign in",
+  expired: "Your sign-in expired, please sign in again.",
+  welcomeTitle: "Your whole school's timetable in your pocket",
+  welcomeText: "Timetables of every class, teacher and room, substitutions, grades, homework and a shared class calendar.",
+  start: "Get started", pickSchool: "Find your school", townSearch: "Town (e.g. Praha)", schoolsIn: "Schools – {town}",
+  manualUrl: "Enter the address", schoolUrl: "Your school's Bakaláři address", schoolUrlHint: "E.g. bakalari.school.cz – it's the address where you sign in.",
+  checking: "Checking…", continue: "Continue",
+  loginTitle: "Sign in", loginText: "Signing in unlocks your timetable, grades, homework, messages and the class calendar. Your password only goes to your school's Bakaláři.",
+  loginRelayNote: "This school doesn't allow direct browser connections, so sign-in goes through our server (the password isn't stored). The Android app connects directly.",
+  username: "Username", password: "Password", signIn: "Sign in", skipLogin: "Continue without signing in",
+  badLogin: "Wrong username or password.", pickClass: "Which class are you in?", pickClassHint: "Its timetable goes on the home screen. You can change it in settings.",
+  publicOff: "This school doesn't publish its timetable, so other classes and teachers aren't available. Sign in to see yours.",
+  goodMorning: "Good morning", goodDay: "Hello", goodEvening: "Good evening",
+  now: "Now", next: "Next", breakNow: "Break", endsIn: "ends in {m} min", startsIn: "starts in {m} min", at: "at {t}",
+  noSchoolToday: "No school today", schoolOver: "School's over", tomorrow: "Tomorrow", dayOff: "Day off",
+  todayLessons: "Today", upcomingChanges: "Timetable changes", dueSoon: "Homework due soon", upcoming: "Coming up",
+  newGrades: "New grades", firstLesson: "Starts at {t}", dayStarts: "{d} you start at {t}", lessonsCount: "{n} lessons", lastEnds: "ends {t}",
+  my: "My timetable", thisWeek: "This week", nextWeek: "Next week", permanent: "Permanent",
+  classes: "Classes", teachers: "Teachers", rooms: "Rooms", favourites: "Favourites", searchTarget: "Search class, teacher, room",
+  weekView: "Week", dayView: "Day", noLessons: "No lessons", period: "Period {n}", group: "Group", theme: "Topic", teacher: "Teacher",
+  room: "Room", subject: "Subject", openTimetable: "Timetable: {x}", cancelled: "Cancelled",
+  change_substitution: "Substitution", change_room: "Room change", change_removed: "Cancelled", change_added: "Extra", change_joined: "Merged",
+  change_absence: "Absence", change_other: "Change", addFav: "Add to favourites", removeFav: "Remove from favourites",
+  average: "Average", overall: "Overall average", weight: "weight {w}", noGrades: "No grades yet",
+  calculator: "Grade calculator", whatIf: "What if…", addMark: "Add a grade", target: "Target average", needed: "You need",
+  neededMark: "A grade with weight {w}:", impossible: "Not possible with one grade", alreadyThere: "You're already there 🎉", newAverage: "New average",
+  pointsOnly: "This subject is graded with points.", hypothetical: "Added (calculator only)",
+  classCalendar: "{c} class calendar", addEntry: "Add to class calendar", kind_test: "Test", kind_homework: "Homework", kind_event: "Event", kind_other: "Other",
+  title: "Title", note: "Note", date: "Date", time: "Time (optional)", fromSchool: "From school", fromClass: "From classmates", addedBy: "added by {a}",
+  report: "Report as inappropriate", reported: "Reported, thanks.", deleteConfirm: "Really delete?", noEvents: "No events",
+  cloudOff: "The shared class calendar works in the Android app and the web version.", homeworkDue: "Homework: {s}",
+  homework: "Homework", messages: "Messages", absence: "Absence", compare: "Free time together", whereNow: "Where is…",
+  freeRooms: "Free rooms", settings: "Settings", about: "About",
+  hwTodo: "To do", hwAll: "All",
+  due: "due {d}", doneLabel: "Done", noHomework: "No homework", noMessages: "No messages", noticeboard: "Notice board",
+  missed: "Missed", lessons: "lessons", lateCount: "late: {n}", unsolved: "Unexcused lessons: {n}", threshold: "Limit {p} %",
+  compareHint: "Pick classes or teachers to see when everyone is free and when school ends for each.",
+  addToCompare: "Add", commonFree: "Free together", allFree: "all free", endsAt: "Ends", nothingInCommon: "No common free period during school hours",
+  whereHint: "Where is a teacher or class right now?", rightNow: "Right now", free: "Free", notInSchool: "Nothing more today", nextLessonAt: "Next: {s} at {t} ({r})",
+  pickTime: "Time",
+  freeRoomsHint: "Downloads the timetables of all rooms (once a week, about {mb} MB) and shows which are free.",
+  download: "Download", freeAt: "Free {p}", progress: "{a} of {b}",
+  language: "Language", appearance: "Appearance", themeAuto: "System", themeLight: "Light", themeDark: "Dark",
+  school: "School", changeSchool: "Change school", account: "Account", logout: "Sign out", loggedAs: "Signed in: {n}",
+  myClass: "My class (without sign-in)", notifications: "Notifications", notifyChanges: "Timetable changes", notifyGrades: "New grades",
+  notifyHomework: "New homework", notifyMessages: "New messages", notifyEvening: "Evening reminder for tomorrow", eveningAt: "Reminder at",
+  notifyAndroidOnly: "Notifications work in the Android app.", widgetInfo: "Widget: long-press the home screen → Widgets → Bakaláři+.",
+  clearCache: "Clear saved data", cacheCleared: "Cleared", version: "Version {v}", sourceCode: "Source code on GitHub",
+  privacy: "Your password stays on the phone (encrypted with an Android key). The class calendar only stores what you write and your name as “Jan N.”.",
+  showWeekend: "Show weekend",
+};
+
+const dicts: Record<Lang, Dict> = { cs, en };
+
+export const langSetting = signal<"auto" | Lang>("auto");
+export const lang = computed<Lang>(() =>
+  langSetting.value !== "auto" ? langSetting.value : navigator.language.toLowerCase().startsWith("cs") || navigator.language.toLowerCase().startsWith("sk") ? "cs" : "en");
+
+export type TKey = keyof Dict;
+
+export function t(key: TKey, vars?: Record<string, string | number>): string {
+  let s = dicts[lang.value][key] ?? cs[key] ?? key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
+  return s;
+}
+
+const DAYS = { cs: ["po", "út", "st", "čt", "pá", "so", "ne"], en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] };
+const DAYS_LONG = { cs: ["pondělí", "úterý", "středa", "čtvrtek", "pátek", "sobota", "neděle"], en: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] };
+export const dayShort = (dow: number) => DAYS[lang.value][dow - 1];
+export const dayLong = (dow: number) => DAYS_LONG[lang.value][dow - 1];
+
+/** "út 29. 9." / "Tue 29/9" */
+export function fmtDate(iso: string, long = false): string {
+  const [, m, d] = iso.split("-").map(Number);
+  const dow = ((new Date(iso + "T12:00").getDay() + 6) % 7) + 1;
+  const name = long ? dayLong(dow) : dayShort(dow);
+  return lang.value === "cs" ? `${name} ${d}. ${m}.` : `${name} ${d}/${m}`;
+}
+
+export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export function fmtRelDay(iso: string, todayIso: string): string {
+  const diff = Math.round((+new Date(iso + "T12:00") - +new Date(todayIso + "T12:00")) / 86400000);
+  if (diff === 0) return lang.value === "cs" ? "dnes" : "today";
+  if (diff === 1) return lang.value === "cs" ? "zítra" : "tomorrow";
+  if (diff === -1) return lang.value === "cs" ? "včera" : "yesterday";
+  return fmtDate(iso);
+}

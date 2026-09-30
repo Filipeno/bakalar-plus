@@ -43,10 +43,10 @@ New-Item -ItemType Directory -Force "$out\gen", "$out\classes", "$out\dex", "$ou
 Copy-Item (Join-Path $here '..\web\dist\*') "$out\assets\web" -Recurse
 Remove-Item "$out\assets\web\sw.js" -ErrorAction SilentlyContinue      # the APK has its files locally
 
-# 1. resources + manifest + assets
+# 1. resources + manifest (assets are added in step 3: aapt2 -A on Windows writes 'assets/web\x' entry names)
 Run "$bt\aapt2.exe" @('compile', '--dir', "$here\res", '-o', "$out\res.zip")
 Run "$bt\aapt2.exe" @('link', '-o', "$out\base.apk", '-I', $jar, '--manifest', "$here\AndroidManifest.xml",
-    '--java', "$out\gen", '--min-sdk-version', '26', '--target-sdk-version', '35', '-A', "$out\assets",
+    '--java', "$out\gen", '--min-sdk-version', '26', '--target-sdk-version', '35',
     '--version-code', "$versionCode", '--version-name', $Version, "$out\res.zip")
 
 # 2. Java -> classes -> dex (options go through an argument file: no quoting trouble with spaces in paths)
@@ -62,6 +62,11 @@ Copy-Item "$out\base.apk" "$out\unaligned.apk"
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [IO.Compression.ZipFile]::Open("$out\unaligned.apk", 'Update')
 [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, "$out\dex\classes.dex", 'classes.dex')
+$assetRoot = (Resolve-Path "$out\assets").Path
+foreach ($f in Get-ChildItem $assetRoot -Recurse -File) {
+    $name = 'assets/' + $f.FullName.Substring($assetRoot.Length + 1).Replace('\', '/')
+    [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $f.FullName, $name)
+}
 $zip.Dispose()
 Run "$bt\zipalign.exe" @('-p', '-f', '4', "$out\unaligned.apk", "$out\aligned.apk")
 

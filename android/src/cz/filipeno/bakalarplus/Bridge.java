@@ -59,6 +59,10 @@ final class Bridge {
             case "logout":
                 Baka.logout(act);
                 return "null";
+            case "updateCheck":
+                return Updater.check(act).toString();
+            case "updateInstall":
+                return JSONObject.quote(Updater.install(act, a.getString("url"), a.optString("sha256")));
             case "ensureNotifications":
                 if (Build.VERSION.SDK_INT >= 33 && act.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                     act.runOnUiThread(() -> act.requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1));

@@ -7,6 +7,7 @@ import { http, usesRelay } from "../lib/net";
 import { native, isAndroid } from "../lib/native";
 import { forgetCloud } from "../lib/cloud";
 import * as push from "../lib/push";
+import { checkForUpdate } from "../lib/update";
 import { clearCache, expired, patchSettings, readCache, settings, user, writeCache } from "../lib/store";
 import type { Target } from "../lib/model";
 import { Icon } from "../ui/icons";
@@ -204,6 +205,7 @@ export function Settings() {
   const s = settings.value;
   const [picker, setPicker] = useState(false);
   const [msg, setMsg] = useState("");
+  const [upd, setUpd] = useState("");
   const setNotify = async (p: Partial<typeof s.notify>) => {
     if (native && Object.values(p).some((v) => v === true)) await native.call("ensureNotifications").catch(() => {});
     patchSettings({ notify: { ...s.notify, ...p } });
@@ -269,6 +271,7 @@ export function Settings() {
       <Section title={t("about")}>
         <div class="card-list">
           <Row icon="github" title={t("sourceCode")} chevron onClick={() => (native ? native.sync("openUrl", { url: REPO }) : open(REPO, "_blank"))} />
+          {isAndroid && <Row icon="refresh" title={t("updateCheck")} onClick={async () => { const i = await checkForUpdate(true); setUpd(i ? (i.newer ? t("updateAvail", { v: i.latest }) : t("updateLatest")) : t("offline")); }} right={upd && <span class="muted small">{upd}</span>} />}
           <Row icon="trash" title={t("clearCache")} onClick={() => { clearCache(); setMsg(t("cacheCleared")); }} right={msg && <span class="muted small">{msg}</span>} />
         </div>
         <p class="hint">{t("privacy")}</p>

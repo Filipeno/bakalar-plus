@@ -6,6 +6,7 @@ import { t } from "../lib/i18n";
 import { online } from "../lib/store";
 import { AuthError } from "../lib/bakalari";
 import { NetError } from "../lib/net";
+import { installUpdate, update, updating } from "../lib/update";
 
 export function Page({ title, sub, backable, actions, children, wide }: {
   title: ComponentChildren; sub?: ComponentChildren; backable?: boolean; actions?: ComponentChildren; children: ComponentChildren; wide?: boolean;
@@ -21,6 +22,12 @@ export function Page({ title, sub, backable, actions, children, wide }: {
         <div class="topbar-actions">{actions}</div>
       </header>
       {!online.value && <div class="banner">{t("offline")}</div>}
+      {update.value && (
+        <div class="banner soft update">
+          <span class="grow">{updating.value === "permission" ? t("updateAllow") : updating.value === "error" ? t("updateFail") : t("updateAvail", { v: update.value.latest })}</span>
+          <button class="btn small" disabled={updating.value === "busy"} onClick={installUpdate}>{updating.value === "busy" ? t("updateBusy") : t("updateNow")}</button>
+        </div>
+      )}
       <main class="content">{children}</main>
     </div>
   );

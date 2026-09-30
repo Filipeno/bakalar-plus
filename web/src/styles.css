@@ -127,6 +127,7 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 
 .banner { margin: 6px 14px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); color: var(--muted); font-size: 13.5px; }
 .content .banner { margin: 8px 0; }
+.banner.update { display: flex; gap: 10px; align-items: center; }
 .banner.soft { background: var(--accent-soft); color: var(--text); }
 .banner.warn { background: color-mix(in srgb, var(--warn) 16%, var(--surface)); color: var(--text); display: flex; gap: 8px; align-items: center; }
 .banner.top { position: sticky; top: 0; z-index: 40; width: calc(100% - 28px); text-align: left; }

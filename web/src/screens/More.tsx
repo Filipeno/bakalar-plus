@@ -4,7 +4,7 @@ import { fmtDate, fmtRelDay, t } from "../lib/i18n";
 import { useAbsence, useHomework, useMessages } from "../lib/data";
 import type { Homework as Hw, Message } from "../lib/bakalari";
 import { setHomeworkDone } from "../lib/bakalari";
-import { user } from "../lib/store";
+import { settings, user } from "../lib/store";
 import { Icon } from "../ui/icons";
 import { Empty, ErrorBox, Loading, NeedLogin as NeedLoginBox, Page, Row, Section, Segmented, Sheet, Spinner, Updated, usePullToRefresh } from "../ui/kit";
 import { go, isTab } from "../ui/router";
@@ -29,6 +29,7 @@ export function More() {
           <Row big icon={SECTION_META[s].icon} title={t(SECTION_META[s].label)} chevron onClick={() => go(sectionPath(s))}
             badge={s === "messages" && unread ? String(unread) : undefined} />
         ))}
+        {settings.value.publicOk && <Row big icon="user" title={t("teachersTitle")} sub={t("teachersSub")} chevron onClick={() => go("/teachers")} />}
         {logged && <Row big icon="clock-countdown" title={t("absence")} chevron onClick={() => go("/absence")} />}
         {!logged && <Row big icon="sign-in" title={t("loginAction")} sub={t("unlockHint")} chevron onClick={() => go("/login")} />}
         <Row big icon="gear" title={t("settings")} chevron onClick={() => go("/settings")} />

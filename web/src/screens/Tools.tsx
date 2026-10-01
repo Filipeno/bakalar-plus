@@ -6,7 +6,8 @@ import { loadWeek, useCabinets, useDirectory, useWeek, weekCacheKey } from "../l
 import { patchSettings, readCache, settings, user, writeCache } from "../lib/store";
 import { setCabinet } from "../lib/cloud";
 import { Icon } from "../ui/icons";
-import { Empty, ErrorBox, Page, Segmented, Sheet, Spinner, errorText } from "../ui/kit";
+import { Empty, ErrorBox, Page, Row, Segmented, Sheet, Spinner, errorText } from "../ui/kit";
+import { fold } from "../lib/schools";
 import { GroupChips, KIND_ICON, pickedGroups, permanentOf, TargetPicker } from "../ui/picker";
 import { LessonSheet } from "../ui/timetable";
 import { go, isTab } from "../ui/router";
@@ -372,6 +373,79 @@ export function FreeRooms() {
             })}
           </div>
         </>
+      )}
+    </Page>
+  );
+}
+
+// ---------------- teachers and their cabinets ----------------
+
+export function Teachers() {
+  const dir = useDirectory();
+  const cabs = useCabinets();
+  const [q, setQ] = useState("");
+  const [sel, setSel] = useState<Target | null>(null);
+  const [edit, setEdit] = useState(false);
+  const logged = !!user.value;
+  const n = fold(q);
+  const list = (dir.data?.teachers ?? []).filter((x) => {
+    if (!n) return true;
+    const c = cabs.data?.[x.id];
+    return fold(`${x.name} ${c?.room ?? ""}`).includes(n);
+  });
+  const cab = sel ? cabs.data?.[sel.id] : undefined;
+  const known = Object.values(cabs.data ?? {}).filter((c) => c.room).length;
+
+  return (
+    <Page title={t("teachersTitle")} backable={!isTab("/teachers")}>
+      <div class="search" style={{ marginBottom: "10px" }}>
+        <Icon name="magnifying-glass" size={18} />
+        <input type="search" placeholder={t("teachersSearch")} value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
+      </div>
+      {!logged && (
+        <div class="card" style={{ marginBottom: "10px" }}>
+          <p class="hint" style={{ margin: 0 }}>{t("teachersLogin")}</p>
+          <button class="btn small" style={{ marginTop: "10px" }} onClick={() => go("/login")}>{t("loginAction")}</button>
+        </div>
+      )}
+      {logged && cabs.data && <p class="hint" style={{ margin: "0 4px 10px" }}>{t("teachersKnown", { a: known, b: dir.data?.teachers.length ?? 0 })}</p>}
+      {cabs.error != null && <ErrorBox error={cabs.error} onRetry={cabs.reload} />}
+      {dir.loading && !dir.data && <Spinner />}
+      {dir.error != null && !dir.data && <ErrorBox error={dir.error} onRetry={dir.reload} />}
+      <div class="stack">
+        {list.map((x) => {
+          const c = cabs.data?.[x.id];
+          return (
+            <Row icon="user" title={x.name} chevron onClick={() => setSel(x)}
+              sub={[c?.room ? t("cabinetX", { r: c.room }) : logged && cabs.data ? t("cabinetNone") : "", c?.hours ? t("consultX", { h: c.hours }) : ""].filter(Boolean).join(" · ") || undefined} />
+          );
+        })}
+      </div>
+      {dir.data && !list.length && <Empty icon="magnifying-glass" text={t("nothingFound")} />}
+
+      <Sheet open={!!sel && !edit} onClose={() => setSel(null)} title={sel?.name}>
+        {sel && (
+          <div>
+            <div class="sheet-label">{t("cabinet")}</div>
+            <div class="sheet-val">{cab?.room ? cab.room : logged ? t("cabinetUnknown") : t("teachersLogin")}</div>
+            {cab?.room && cab.by && <div class="hint">{cab.by}</div>}
+            {cab?.hours && <><div class="sheet-label">{t("consult")}</div><div class="sheet-val">{cab.hours}</div></>}
+            <div class="btn-row" style={{ marginTop: "18px", flexWrap: "wrap" }}>
+              {logged && cabs.data && <button class="btn line" onClick={() => setEdit(true)}><Icon name="pencil-simple" size={18} />{cab?.room ? t("edit") : t("cabinetAdd")}</button>}
+              <button class="btn line" onClick={() => { const x = sel; setSel(null); setTimeout(() => go("/timetable", { k: x.kind, id: x.id, n: x.name }), 50); }}>
+                <Icon name="calendar-blank" size={18} />{t("openTimetableBtn")}
+              </button>
+            </div>
+          </div>
+        )}
+      </Sheet>
+      {sel && (
+        <CabinetSheet open={edit} teacher={sel} room={cab?.room ?? ""} onClose={() => setEdit(false)}
+          onSaved={(room) => {
+            const all = { ...cabs.data };
+            if (room) all[sel.id] = { ...all[sel.id], room, by: "", updated: Date.now() }; else if (all[sel.id]?.hours) all[sel.id] = { ...all[sel.id], room: "", by: "" }; else delete all[sel.id];
+            cabs.set(all); setEdit(false);
+          }} />
       )}
     </Page>
   );

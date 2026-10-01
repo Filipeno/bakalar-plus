@@ -11,7 +11,7 @@ import { Timetable } from "./screens/Timetable";
 import { Grades } from "./screens/Grades";
 import { Calendar } from "./screens/Calendar";
 import { Absence, Homework, Messages, More } from "./screens/More";
-import { Compare, FreeRooms, WhereNow } from "./screens/Tools";
+import { Compare, FreeRooms, Teachers, WhereNow } from "./screens/Tools";
 import { Customize, Login, Settings, Welcome } from "./screens/Setup";
 import { wide } from "./ui/layout";
 import { useMessages } from "./lib/data";
@@ -19,12 +19,12 @@ import { useMessages } from "./lib/data";
 const SCREENS: Record<string, () => preact.JSX.Element> = {
   "/today": Today, "/timetable": Timetable, "/grades": Grades, "/calendar": Calendar, "/more": More,
   "/homework": Homework, "/messages": Messages, "/absence": Absence,
-  "/compare": Compare, "/where": WhereNow, "/rooms": FreeRooms,
+  "/compare": Compare, "/where": WhereNow, "/rooms": FreeRooms, "/teachers": Teachers,
   "/settings": Settings, "/customize": Customize, "/login": Login, "/welcome": Welcome,
 };
 
 // Screens that keep the tab bar (everything reachable from a tab or from More); settings and sign-in hide it.
-const WITH_TABS = ["/today", "/timetable", "/grades", "/calendar", "/homework", "/messages", "/where", "/compare", "/rooms", "/absence", "/more"];
+const WITH_TABS = ["/today", "/timetable", "/grades", "/calendar", "/homework", "/messages", "/where", "/compare", "/rooms", "/teachers", "/absence", "/more"];
 
 export function App() {
   const s = settings.value;
@@ -113,6 +113,7 @@ function Sidebar({ active }: { active: string }) {
           <div class="side-label">{t("tools")}</div>
           {tools.map((s) => item(sectionPath(s), SECTION_META[s].icon, SECTION_META[s].label))}
           {settings.value.publicOk && item("/rooms", "door-open", "freeRooms")}
+          {settings.value.publicOk && item("/teachers", "user", "teachersTitle")}
         </div>
       )}
       <div class="side-foot">

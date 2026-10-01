@@ -4,7 +4,7 @@ import { Icon, type IconName } from "./icons";
 import { back, pushCloser, route } from "./router";
 import { wide as isWide } from "./layout";
 
-const SIDEBAR = ["/today", "/timetable", "/grades", "/calendar", "/homework", "/messages", "/absence", "/where", "/compare", "/rooms", "/settings", "/customize", "/more"];
+const SIDEBAR = ["/today", "/timetable", "/grades", "/calendar", "/homework", "/messages", "/absence", "/where", "/compare", "/rooms", "/teachers", "/settings", "/customize", "/more"];
 import { t, type TKey } from "../lib/i18n";
 import { online } from "../lib/store";
 import { AuthError } from "../lib/bakalari";

@@ -59,13 +59,14 @@ export function Homework() {
       <div class="stack">
         {list.map((h) => {
           const soon = !h.done && h.due <= addDays(td, 1);
+          const late = !h.done && h.due < td;
           return (
             <button class={`row hw-row ${h.done ? "done" : ""}`} onClick={() => setOpen(h)}>
               <span class="row-icon"><Icon name={h.done ? "check-circle" : "circle"} size={22} fill={h.done} /></span>
               <span class="row-main">
                 <span class="row-title clamp2">{h.subjectName} · {h.text}</span>
                 <span class="row-sub">
-                  <span class={soon ? "warn-text" : ""}>{h.done ? t("doneLabel") : t("due", { d: fmtRelDay(h.due, td) })}</span>
+                  <span class={late ? "err-text" : soon ? "warn-text" : ""}>{h.done ? t("doneLabel") : late ? t("overdue", { d: fmtRelDay(h.due, td) }) : t("due", { d: fmtRelDay(h.due, td) })}</span>
                   {h.teacher ? ` · ${h.teacher}` : ""}
                 </span>
               </span>
@@ -134,6 +135,9 @@ export function Absence() {
       {abs.error != null && <ErrorBox error={abs.error} onRetry={abs.reload} />}
       {d && (
         <>
+          {d.perSubject.filter((s) => s.lessons > 0 && d.threshold > 0 && s.percent >= d.threshold).map((s) => (
+            <div class="banner err"><Icon name="warning" size={16} />{t("overLimit", { s: s.subject, p: s.percent.toFixed(0), l: Math.round(d.threshold) })}</div>
+          ))}
           {d.unsolved > 0 && <div class="banner warn"><Icon name="warning" size={16} />{t("unsolved", { n: d.unsolved })}</div>}
           <Section title={d.threshold ? t("threshold", { p: Math.round(d.threshold) }) : undefined}>
             <div class="stack">

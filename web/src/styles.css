@@ -140,6 +140,8 @@ p { margin: 0; }
 .banner .icon { color: var(--mu); }
 .banner.warn { color: var(--wn); box-shadow: inset 3px 0 0 var(--wn); }
 .banner.warn .icon { color: var(--wn); }
+.banner.err { color: var(--er); box-shadow: inset 3px 0 0 var(--er); }
+.banner.err .icon { color: var(--er); }
 .banner.accent { box-shadow: 0 0 0 1px var(--ac); color: var(--tx); }
 .banner.top { position: sticky; top: 0; z-index: 25; margin-top: calc(6px + var(--safe-t)); }
 

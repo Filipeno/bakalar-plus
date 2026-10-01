@@ -52,6 +52,12 @@ export const isoDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}
 export const today = () => isoDate(new Date());
 export const parseIso = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d, 12); };
 export const addDays = (iso: string, n: number) => { const d = parseIso(iso); d.setDate(d.getDate() + n); return isoDate(d); };
+/** The date `n` school days (Mon–Fri) after `iso`, so a Thursday "next 3 days" reaches Tuesday, not Sunday. */
+export function addSchoolDays(iso: string, n: number): string {
+  let d = iso;
+  while (n > 0) { d = addDays(d, 1); const w = parseIso(d).getDay(); if (w !== 0 && w !== 6) n--; }
+  return d;
+}
 /** Monday of the week containing `iso`. */
 export const mondayOf = (iso: string) => { const d = parseIso(iso); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); return isoDate(d); };
 export const dowOf = (iso: string) => ((parseIso(iso).getDay() + 6) % 7) + 1;

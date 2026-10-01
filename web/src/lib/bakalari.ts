@@ -175,6 +175,12 @@ function normalizeApiWeek(j: any, term: Term): Week {
       day.lessons.push(lesson);
     }
     day.lessons.sort((x, y) => toMin(x.begin) - toMin(y.begin));
+    // Holidays sometimes arrive as a class absence in every period (incl. unused 0th/10th) – show one day off instead.
+    if (!day.off && day.lessons.length && day.lessons.every((l) => !l.subject && l.change && l.change.kind !== "added")) {
+      const why = day.lessons[0].change!.text;
+      day.off = why ? `Volno · ${why}` : "Volno";
+      day.lessons = [];
+    }
     return day;
   });
   return { term, hours, days, fetchedAt: Date.now() };
@@ -290,7 +296,9 @@ export async function getAbsence(): Promise<AbsenceSummary> {
 
 /** Bakaláři sends HTML in messages and homework; show it as plain text with line breaks (never inject it). */
 export function htmlToText(html: string): string {
-  if (!/[<&]/.test(html)) return html.trim();
+  // Normalise Windows line breaks, trailing spaces and runs of blank lines (common in Komens messages).
+  const tidy = (s: string) => s.replace(/\r\n?/g, "\n").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  if (!/[<&]/.test(html)) return tidy(html);
   const doc = new DOMParser().parseFromString(html.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|li|h\d)>/gi, "\n"), "text/html");
-  return (doc.body.textContent ?? "").replace(/\n{3,}/g, "\n\n").trim();
+  return tidy(doc.body.textContent ?? "");
 }

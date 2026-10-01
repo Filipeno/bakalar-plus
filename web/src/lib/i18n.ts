@@ -53,7 +53,7 @@ const cs = {
   freeRooms: "Volné učebny", settings: "Nastavení", about: "O aplikaci",
   // homework / messages / absence
   hwTodo: "K odevzdání", hwAll: "Všechny",
-  due: "do {d}", doneLabel: "Hotovo", noHomework: "Žádné úkoly", noMessages: "Žádné zprávy", noticeboard: "Nástěnka",
+  due: "do {d}", overdue: "Po termínu · {d}", overLimit: "{s}: {p} % – nad limitem {l} %", doneLabel: "Hotovo", noHomework: "Žádné úkoly", noMessages: "Žádné zprávy", noticeboard: "Nástěnka",
   missed: "Zameškáno", lessons: "hodin", lateCount: "pozdní příchody: {n}", unsolved: "Neomluvené hodiny: {n}", threshold: "Limit {p} %",
   // compare
   compareHint: "Vyber třídy nebo učitele a uvidíš, kdy mají všichni volno a kdy komu končí škola.",
@@ -157,7 +157,7 @@ const en: Dict = {
   homework: "Homework", messages: "Messages", absence: "Absence", compare: "Free time together", whereNow: "Where is…",
   freeRooms: "Free rooms", settings: "Settings", about: "About",
   hwTodo: "To do", hwAll: "All",
-  due: "due {d}", doneLabel: "Done", noHomework: "No homework", noMessages: "No messages", noticeboard: "Notice board",
+  due: "due {d}", overdue: "Overdue · {d}", overLimit: "{s}: {p} % – over the {l} % limit", doneLabel: "Done", noHomework: "No homework", noMessages: "No messages", noticeboard: "Notice board",
   missed: "Missed", lessons: "lessons", lateCount: "late: {n}", unsolved: "Unexcused lessons: {n}", threshold: "Limit {p} %",
   compareHint: "Pick classes or teachers to see when everyone is free and when school ends for each.",
   addToCompare: "Add", commonFree: "Free together", allFree: "all free", endsAt: "Ends", nothingInCommon: "No common free period during school hours",

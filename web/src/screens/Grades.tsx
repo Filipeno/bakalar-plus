@@ -47,6 +47,8 @@ export function Grades() {
         {(marks.data ?? []).map((s) => {
           const avg = parseAvg(s.average) ?? weightedAverage(s.marks);
           const maxW = Math.max(1, ...s.marks.map((m) => m.weight));
+          // Only highlight the heaviest marks when weights actually differ – with equal weights every mark would be "heavy".
+          const mixed = new Set(s.marks.map((m) => m.weight)).size > 1;
           return (
             <button class="subject" onClick={() => go("/grades", { s: s.id })}>
               <span class="subject-head">
@@ -55,7 +57,7 @@ export function Grades() {
               </span>
               <span class="marks">
                 {s.marks.slice(0, 12).map((m) => (
-                  <span class={`mark ${m.weight >= maxW ? "heavy" : ""} ${m.isNew ? "new" : ""}`}>{m.text}</span>
+                  <span class={`mark ${mixed && m.weight >= maxW ? "heavy" : ""} ${m.isNew ? "new" : ""}`}>{m.text}</span>
                 ))}
                 <span class="calc-link"><Icon name="calculator" size={13} />{t("calc")}</span>
               </span>

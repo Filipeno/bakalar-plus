@@ -38,6 +38,12 @@ export const expired = signal(false);
 // On Android the Java side is the source of truth for the login.
 if (native && user.value && !native.sync<{ loggedIn: boolean }>("authState")?.loggedIn) user.value = null;
 
+/** The school's name for display. Some Bakaláři servers report the template text "název školy" instead of a name. */
+export function schoolName(): string {
+  const u = user.value?.schoolName?.trim() ?? "";
+  return (u && !/^(název školy|school name)$/i.test(u) ? u : "") || settings.value.school?.name || "";
+}
+
 export function patchSettings(p: Partial<Settings>) { settings.value = { ...settings.value, ...p }; }
 
 effect(() => {

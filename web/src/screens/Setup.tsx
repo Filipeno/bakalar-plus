@@ -8,7 +8,7 @@ import { native, isAndroid } from "../lib/native";
 import { forgetCloud } from "../lib/cloud";
 import * as push from "../lib/push";
 import { checkForUpdate, installUpdate, update, updating } from "../lib/update";
-import { clearCache, expired, patchSettings, readCache, settings, user, writeCache } from "../lib/store";
+import { clearCache, expired, patchSettings, readCache, schoolName, settings, user, writeCache } from "../lib/store";
 import type { Target } from "../lib/model";
 import { Icon } from "../ui/icons";
 import { errorText, IosInstall, Page, Row, Section, Segmented, Sheet, Spinner, SwitchRow } from "../ui/kit";
@@ -297,7 +297,7 @@ export function Settings() {
           {user.value ? (
             <div class="card">
               <div style={{ fontSize: "14px", fontWeight: 500 }}>{user.value.name}</div>
-              <div class="hint">{[user.value.classAbbrev, user.value.schoolName].filter(Boolean).join(" · ")}</div>
+              <div class="hint">{[user.value.classAbbrev, schoolName()].filter(Boolean).join(" · ")}</div>
             </div>
           ) : (
             <Row icon="sign-in" title={t("loginAction")} sub={t("unlockHint")} chevron onClick={() => go("/login")} />

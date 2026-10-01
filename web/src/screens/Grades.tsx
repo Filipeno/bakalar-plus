@@ -3,7 +3,7 @@ import { t, fmtDate } from "../lib/i18n";
 import { useMarks } from "../lib/data";
 import type { Mark, SubjectMarks } from "../lib/bakalari";
 import { addDays, today } from "../lib/model";
-import { user } from "../lib/store";
+import { schoolName, user } from "../lib/store";
 import { Icon } from "../ui/icons";
 import { Empty, ErrorBox, Loading, NeedLogin, Page, Section, Segmented, Updated, usePullToRefresh } from "../ui/kit";
 import { go, isTab, route } from "../ui/router";
@@ -36,7 +36,7 @@ export function Grades() {
   const fresh = (marks.data ?? []).reduce((n, s) => n + s.marks.filter((m) => m.isNew || m.date >= since).length, 0);
 
   return (
-    <Page title={t("tabGrades")} sub={user.value.schoolName} backable={backable}>
+    <Page title={t("tabGrades")} sub={schoolName()} backable={backable}>
       {marks.loading && !marks.data && <Loading />}
       {marks.error != null && <ErrorBox error={marks.error} onRetry={marks.reload} />}
       {marks.data && !marks.data.length && <Empty icon="chart-line-up" text={t("noGrades")} />}

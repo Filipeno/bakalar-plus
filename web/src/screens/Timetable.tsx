@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Day, Lesson, Target, Term } from "../lib/model";
 import { dowOf, filterGroups, targetKey, today } from "../lib/model";
 import { dayShort, t } from "../lib/i18n";
-import { useDirectory, useHomework, useWeek, type Source } from "../lib/data";
+import { useCabinets, useDirectory, useHomework, useWeek, type Source } from "../lib/data";
 import { patchSettings, settings, user } from "../lib/store";
 import { Icon } from "../ui/icons";
 import { Empty, ErrorBox, Loading, Page, Segmented, Updated, usePullToRefresh } from "../ui/kit";
@@ -25,6 +25,7 @@ export function Timetable() {
     return hasMy ? { kind: "my" } : null;
   }, [q.k, q.id, dir.data, hasMy]);
 
+  const cabs = useCabinets();
   const term = (q.term as Term) || "actual";
   const week = useWeek(src, term);
   // A class timetable (or "my" class without a login) can be narrowed to the groups you're in.
@@ -72,7 +73,8 @@ export function Timetable() {
   const canBrowse = settings.value.publicOk;
 
   return (
-    <Page wide backable={!isTab("/timetable")} sub={src ? t("tabTimetable") : undefined}
+    <Page wide backable={!isTab("/timetable")}
+      sub={src ? [t("tabTimetable"), src.kind === "teacher" && cabs.data?.[src.id]?.room ? t("cabinetX", { r: cabs.data[src.id].room }) : ""].filter(Boolean).join(" · ") : undefined}
       title={<button class="title-btn" onClick={() => canBrowse && setPicker(true)}>
         {title}{canBrowse && <Icon name="caret-down" size={18} />}
       </button>}

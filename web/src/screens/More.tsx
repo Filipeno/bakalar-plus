@@ -3,9 +3,10 @@ import { addDays, today } from "../lib/model";
 import { fmtDate, fmtRelDay, t } from "../lib/i18n";
 import { useAbsence, useHomework, useMessages } from "../lib/data";
 import type { Homework as Hw, Message } from "../lib/bakalari";
+import { setHomeworkDone } from "../lib/bakalari";
 import { user } from "../lib/store";
 import { Icon } from "../ui/icons";
-import { Empty, ErrorBox, Loading, NeedLogin as NeedLoginBox, Page, Row, Section, Segmented, Sheet, Updated, usePullToRefresh } from "../ui/kit";
+import { Empty, ErrorBox, Loading, NeedLogin as NeedLoginBox, Page, Row, Section, Segmented, Sheet, Spinner, Updated, usePullToRefresh } from "../ui/kit";
 import { go, isTab } from "../ui/router";
 import { SECTION_META, available, tabSections } from "../ui/sections";
 import { sectionPath } from "../ui/prefs";
@@ -42,8 +43,22 @@ export function Homework() {
   const hw = useHomework();
   const [tab, setTab] = useState<"todo" | "all">("todo");
   const [open, setOpen] = useState<Hw | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<unknown>(null);
   usePullToRefresh(hw.reload);
   const backable = !isTab("/homework");
+  // Tick at once, then tell Bakaláři; put it back if the school refuses.
+  const toggle = async (h: Hw) => {
+    if (!hw.data || busy) return;
+    const before = hw.data;
+    const flip = (v: boolean) => before.map((x) => (x.id === h.id ? { ...x, done: v } : x));
+    setBusy(h.id); setErr(null);
+    hw.set(flip(!h.done));
+    if (open?.id === h.id) setOpen({ ...h, done: !h.done });
+    try { await setHomeworkDone(h.id, !h.done); }
+    catch (e) { hw.set(before); setErr(e); if (open?.id === h.id) setOpen(h); }
+    setBusy(null);
+  };
   if (!user.value) return <Page title={t("homework")} backable={backable}><NeedLogin /></Page>;
   const td = today();
   const list = (hw.data ?? [])
@@ -56,6 +71,7 @@ export function Homework() {
       </div>
       {hw.loading && !hw.data && <Loading />}
       {hw.error != null && <ErrorBox error={hw.error} onRetry={hw.reload} />}
+      {err != null && <ErrorBox error={err} />}
       {hw.data && !list.length && <Empty icon="check-circle" text={t("noHomework")} />}
       <div class="stack">
         {list.map((h) => {
@@ -63,7 +79,11 @@ export function Homework() {
           const late = !h.done && h.due < td;
           return (
             <button class={`row hw-row ${h.done ? "done" : ""}`} onClick={() => setOpen(h)}>
-              <span class="row-icon"><Icon name={h.done ? "check-circle" : "circle"} size={22} fill={h.done} /></span>
+              <span class="row-icon hw-check" role="checkbox" aria-checked={h.done} aria-label={t(h.done ? "hwUndone" : "hwDone")} tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); toggle(h); }}
+                onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); e.stopPropagation(); toggle(h); } }}>
+                {busy === h.id ? <Spinner small /> : <Icon name={h.done ? "check-circle" : "circle"} size={22} fill={h.done} />}
+              </span>
               <span class="row-main">
                 <span class="row-title clamp2">{h.subjectName} · {h.text}</span>
                 <span class="row-sub">
@@ -79,6 +99,13 @@ export function Homework() {
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.subjectName}
         sub={open ? [open.done ? t("doneLabel") : t("due", { d: fmtRelDay(open.due, td) }), open.teacher].filter(Boolean).join(" · ") : ""}>
         {open && <p class="msg-body pre">{linkify(open.text)}</p>}
+        {open && (
+          <div class="btn-row" style={{ marginTop: "16px" }}>
+            <button class={`btn ${open.done ? "line" : ""}`} disabled={busy === open.id} onClick={() => toggle(open)}>
+              <Icon name={open.done ? "circle" : "check-circle"} size={18} />{t(open.done ? "hwUndone" : "hwDone")}
+            </button>
+          </div>
+        )}
       </Sheet>
     </Page>
   );

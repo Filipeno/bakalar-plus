@@ -102,7 +102,7 @@ export const accessToken = () => backend.accessToken();
 async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const r = await backend.request(method, path, body);
   if (r.status === 401) throw new AuthError("expired", "expired");
-  if (r.status !== 200) throw new NetError(`HTTP ${r.status}`, r.status, "http");
+  if (r.status < 200 || r.status > 299) throw new NetError(`HTTP ${r.status}`, r.status, "http");
   return (r.text ? JSON.parse(r.text) : null) as T;
 }
 
@@ -238,6 +238,10 @@ export async function getHomework(from: string): Promise<Homework[]> {
 }
 
 // ---- messages (Komens) ----
+
+/** Ticks a homework as done (or not) in Bakaláři, the same flag the official app sets. */
+export const setHomeworkDone = (id: string, done: boolean) =>
+  api<unknown>(`/api/3/homeworks/${encodeURIComponent(id)}/student-done/${done}`, "PUT");
 
 export interface Message { id: string; title: string; text: string; sender: string; date: string; read: boolean; board: boolean }
 

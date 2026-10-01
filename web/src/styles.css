@@ -464,6 +464,8 @@ p { margin: 0; }
 .where-cab .grow { flex: 1; min-width: 0; }
 .where-cab.static { cursor: default; }
 .where-cab.static + .btn-row, .where-cab + .where-cab { margin-top: 0; }
+.hw-check { cursor: pointer; border-radius: 50%; }
+.hw-check:active { transform: scale(.9); }
 .where-cab-by { display: block; font-size: 12px; color: var(--mu); }
 .group-box { margin: 10px 0; border-radius: 12px; background: var(--sf); }
 .group-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; color: inherit; text-align: left; }
@@ -621,7 +623,7 @@ p { margin: 0; }
 .desk-main { min-width: 0; }
 .desk-main .banner.top { margin-top: 12px; }
 [data-layout="desktop"] { --gutter: 32px; }
-[data-layout="desktop"] .page, [data-layout="desktop"] .page.wide { max-width: 1240px; margin: 0; }
+[data-layout="desktop"] .page, [data-layout="desktop"] .page.wide { max-width: 1760px; margin: 0; }
 [data-layout="desktop"] .topbar { padding: 26px var(--gutter) 14px; position: static; }
 [data-layout="desktop"] .topbar h1 { font-size: 30px; }
 [data-layout="desktop"] .topbar-back span { display: inline; }

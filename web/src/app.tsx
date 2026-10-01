@@ -1,5 +1,5 @@
 import { t } from "./lib/i18n";
-import { expired, settings, user } from "./lib/store";
+import { expired, schoolName, settings, user } from "./lib/store";
 import { Icon } from "./ui/icons";
 import { go, route } from "./ui/router";
 import { sectionPath } from "./ui/prefs";
@@ -97,7 +97,7 @@ function Sidebar({ active }: { active: string }) {
   const tools = (["where", "compare"] as const).filter((s) => av.includes(s));
   return (
     <aside class="sidebar">
-      <div class="side-brand"><span class="side-logo">B+</span><span class="grow"><b>{t("appName")}</b><small class="ellipsis">{u?.schoolName || settings.value.school?.name || ""}</small></span></div>
+      <div class="side-brand"><span class="side-logo">B+</span><span class="grow"><b>{t("appName")}</b><small class="ellipsis">{schoolName()}</small></span></div>
       <div class="side-group">
         {main.map((s) => item(sectionPath(s), SECTION_META[s].icon, SECTION_META[s].label))}
       </div>

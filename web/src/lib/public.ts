@@ -55,6 +55,9 @@ export function extractJson(html: string, marker: string): any | null {
   return null;
 }
 
+/** Bakaláři sometimes puts HTML line breaks into names ("4.A TZB<br/>4.B TZB"). */
+const clean = (s: unknown) => String(s ?? "").replace(/<br\s*\/?>/gi, ", ").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+
 const DAY_ABBR = ["po", "út", "st", "čt", "pá", "so", "ne"];
 
 /** "29.9.2026 (úterý)" -> "2026-09-29" */
@@ -117,7 +120,7 @@ function normalizePublic(data: any, term: Term): Week {
         try { tip = JSON.parse(a.TooltipDetails || "{}"); } catch { /* keep empty */ }
         if (!day.date && term !== "permanent") day.date = dateFromText(a.Day ?? tip.day);
         const begin = hhmm(a.Begin ?? h.Begin), end = hhmm(a.End ?? h.End);
-        const text = String(a.ChangeInfo || "").trim();
+        const text = clean(a.ChangeInfo);
         const code = String(tip.infoChangeCode ?? "");
         let change: Change | undefined;
         if (a.HasChanged || text || (code && code !== "NoChange")) {
@@ -127,10 +130,10 @@ function normalizePublic(data: any, term: Term): Week {
         day.lessons.push({
           hour: captionAt(begin), begin, end,
           subject: a.SubjectAbbrev || "", subjectName: a.SubjectText || a.SubjectName || a.SubjectAbbrev || "",
-          teacher: a.Teacher || "", teacherName: a.TeacherFullname || a.Teacher || "",
-          room: a.Room || "", roomName: a.RoomFullName || a.Room || "",
-          group: a.GroupsNames || "",
-          theme: a.Theme || undefined,
+          teacher: clean(a.Teacher), teacherName: clean(a.TeacherFullname || a.Teacher),
+          room: clean(a.Room), roomName: clean(a.RoomFullName || a.Room),
+          group: clean(a.GroupsNames),
+          theme: clean(a.Theme) || undefined,
           change,
           removed: a.Type === "removed" || change?.kind === "removed" || undefined,
           color: a.SubjectColor || undefined,

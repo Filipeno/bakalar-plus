@@ -91,7 +91,7 @@ export function byPeriod(day: Day): { key: string; begin: string; end: string; h
 // ---------- class groups (a class split for some subjects: AJ_1 / AJ_2, 1K / 2K...) ----------
 
 /** "AJ_1, NJ_2 · lichý týden" -> ["AJ_1", "NJ_2"] (the logged-in timetable appends the week cycle). */
-export const lessonGroups = (l: Lesson) => l.group.split(" · ")[0].split(/\s*,\s*/).filter(Boolean);
+export const lessonGroups = (l: Lesson) => l.group.split(" · ")[0].split(/\s*,\s*|<br\s*\/?>/i).filter(Boolean);
 
 export interface GroupFamily { groups: string[]; subjects: string[] }
 

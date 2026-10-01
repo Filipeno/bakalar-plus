@@ -5,7 +5,7 @@
 // ask the school "who is this and which class". Only users who turn on web notifications leave a Bakaláři refresh
 // token here, encrypted (TOKEN_KEY), and "delete my data" (DELETE /me) removes it.
 
-import { CORS, fail, identify, json, noContent, readSession, schoolBase, schoolFetch, signSession, type Env } from "./util";
+import { CORS, fail, identify, json, noContent, readSession, schoolBase, schoolFetch, signSession, type Env, type Session } from "./util";
 import { deleteMe, pushApi, runChecks } from "./push";
 
 export default {
@@ -119,6 +119,7 @@ async function calendar(req: Request, url: URL, env: Env): Promise<Response> {
 
   const s = await readSession(env, req);
   if (!s) return fail("unauthorized", 401);
+  if (url.pathname.startsWith("/cal/cabinets")) return await cabinets(req, url, env, s);
   if (!s.k) return fail("no class", 403);
 
   if (url.pathname === "/cal/entries" && req.method === "GET") {
@@ -173,4 +174,34 @@ async function calendar(req: Request, url: URL, env: Env): Promise<Response> {
     return noContent();
   }
   return fail("method", 405);
+}
+
+// ---------------- teachers' cabinets ----------------
+// Bakaláři doesn't publish where a teacher's cabinet (staff room) is, so students of the school fill it in for everyone.
+
+const MAX_CABINET_EDITS = 60;
+
+async function cabinets(req: Request, url: URL, env: Env, s: Session): Promise<Response> {
+  if (!s.sk) return fail("unauthorized", 401);   // a session from before cabinets: the app gets a new one and retries
+  if (url.pathname === "/cal/cabinets" && req.method === "GET") {
+    const { results } = await env.DB.prepare("SELECT teacher, room, author_name, updated FROM cabinets WHERE school_key = ?").bind(s.sk).all<any>();
+    return json({ cabinets: Object.fromEntries(results.map((r) => [r.teacher, { room: r.room, by: r.author_name, updated: r.updated }])) });
+  }
+  const m = /^\/cal\/cabinets\/([^/]{1,120})$/.exec(url.pathname);
+  if (!m || req.method !== "PUT") return fail("not found", 404);
+  let teacher: string;
+  try { teacher = decodeURIComponent(m[1]).trim(); } catch { return fail("bad teacher", 400); }
+  const b = (await req.json().catch(() => null)) as { room?: string } | null;
+  const room = String(b?.room ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+  if (!teacher || teacher.length > 40) return fail("bad teacher", 400);
+  const since = Date.now() - 86400_000;
+  const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM cabinets WHERE author_hash = ? AND updated > ?").bind(s.u, since).first<{ n: number }>();
+  if ((count?.n ?? 0) >= MAX_CABINET_EDITS) return fail("too many edits today", 429);
+  const now = Date.now();
+  if (!room) await env.DB.prepare("DELETE FROM cabinets WHERE school_key = ? AND teacher = ?").bind(s.sk, teacher).run();
+  else await env.DB.prepare(
+    "INSERT INTO cabinets (school_key, teacher, room, author_hash, author_name, updated) VALUES (?, ?, ?, ?, ?, ?) " +
+    "ON CONFLICT (school_key, teacher) DO UPDATE SET room = excluded.room, author_hash = excluded.author_hash, author_name = excluded.author_name, updated = excluded.updated",
+  ).bind(s.sk, teacher, room, s.u, s.n, now).run();
+  return json({ room, by: s.n, updated: now });
 }

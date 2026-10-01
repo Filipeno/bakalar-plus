@@ -40,8 +40,11 @@ export async function sha(s: string): Promise<string> {
 
 // ---- sessions: one signed token format for the class calendar and push ----
 
-/** k = class key (hash of school + class), u = user key (hash of secret + school + Bakaláři user id), n = "Jan N.", c = class label. */
-export interface Session { k: string; u: string; n: string; c: string; exp: number }
+/**
+ * k = class key (hash of school + class), u = user key (hash of secret + school + Bakaláři user id), n = "Jan N.", c = class label,
+ * sk = school key (hash of the school address; missing in sessions signed before teacher cabinets existed).
+ */
+export interface Session { k: string; u: string; n: string; c: string; exp: number; sk?: string }
 
 export async function signSession(env: Env, s: Session): Promise<string> {
   const body = b64u(enc.encode(JSON.stringify(s)));
@@ -118,6 +121,7 @@ export async function identify(env: Env, base: string, accessToken: string): Pro
       u: await sha(`${env.SESSION_SECRET}|${lower}|${u.UserUID}`),
       n: shortName(String(u.FullName ?? "")),
       c: String(cls?.Abbrev ?? "").trim(),
+      sk: await sha(lower),
       exp: Math.floor(Date.now() / 1000) + 30 * 86400,
     },
   };

@@ -22,6 +22,19 @@ CREATE TABLE IF NOT EXISTS reports (
   PRIMARY KEY (entry_id, user_hash)
 );
 
+-- Teachers' cabinets (staff rooms), filled in by the school's students. school_key = hash(school address),
+-- teacher = the teacher's id in the public timetable.
+CREATE TABLE IF NOT EXISTS cabinets (
+  school_key TEXT NOT NULL,
+  teacher TEXT NOT NULL,
+  room TEXT NOT NULL,
+  author_hash TEXT NOT NULL,
+  author_name TEXT NOT NULL,
+  updated INTEGER NOT NULL,
+  PRIMARY KEY (school_key, teacher)
+);
+CREATE INDEX IF NOT EXISTS cabinets_author ON cabinets (author_hash, updated);
+
 -- Web Push (web/iPhone version). id = same user key as the calendar's author_hash.
 CREATE TABLE IF NOT EXISTS push_users (
   id TEXT PRIMARY KEY,

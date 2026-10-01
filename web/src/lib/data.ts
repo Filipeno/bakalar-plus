@@ -4,6 +4,7 @@ import { addDays, mondayOf, today } from "./model";
 import { fetchDirectory, fetchPublicWeek, type Directory } from "./public";
 import * as bk from "./bakalari";
 import { fold } from "./schools";
+import { cloudAvailable, listCabinets } from "./cloud";
 
 export type Source = { kind: "my" } | Target;
 
@@ -39,6 +40,12 @@ export function useWeek(src: Source | null, term: Term) {
 export function useDirectory() {
   const s = school();
   return useData<Directory>(s && settings.value.publicOk ? `dir:${s}` : null, () => fetchDirectory(s), 24 * 3600_000);
+}
+
+/** Teachers' cabinets (shared by the school's students; needs a login to read and edit). */
+export function useCabinets() {
+  const s = school();
+  return useData(user.value && s && cloudAvailable() ? `cab:${s}` : null, () => listCabinets(s).then((r) => r.cabinets), 60 * 60_000);
 }
 
 const uk = (name: string) => (user.value ? `${name}:${user.value.uid}` : null);

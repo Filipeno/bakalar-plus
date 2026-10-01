@@ -87,3 +87,36 @@ export function byPeriod(day: Day): { key: string; begin: string; end: string; h
   }
   return [...map.values()].sort((a, b) => toMin(a.begin) - toMin(b.begin));
 }
+
+// ---------- class groups (a class split for some subjects: AJ_1 / AJ_2, 1K / 2K...) ----------
+
+export const lessonGroups = (l: Lesson) => l.group.split(/\s*,\s*/).filter(Boolean);
+
+/**
+ * The groups of a class timetable, as sets of alternatives (you're in one group of each set): groups that differ
+ * only in their number, like AJ_1 / AJ_2 or 1K / 2K. (Groups taught at the same time aren't always alternatives:
+ * half the class can have AJ_1 while the other half has 2K.)
+ */
+export function groupFamilies(week: Week | undefined): string[][] {
+  const fams = new Map<string, Set<string>>();
+  for (const d of week?.days ?? []) {
+    for (const l of d.lessons) {
+      for (const g of lessonGroups(l)) {
+        const stem = g.replace(/[\d_\s.-]+/g, "").toLowerCase();
+        if (stem) fams.set(stem, (fams.get(stem) ?? new Set()).add(g));
+      }
+    }
+  }
+  const cmp = (a: string, b: string) => a.localeCompare(b, "cs", { numeric: true });
+  return [...fams.values()].filter((f) => f.size > 1).map((f) => [...f].sort(cmp)).sort((a, b) => cmp(a[0], b[0]));
+}
+
+/** Drop the lessons of the other groups in every set where one group is picked. */
+export function filterGroups(week: Week, picked: string[]): Week {
+  if (!picked.length) return week;
+  const fams = groupFamilies(week).filter((f) => f.some((g) => picked.includes(g)));
+  const hidden = new Set(fams.flat().filter((g) => !picked.includes(g)));
+  if (!hidden.size) return week;
+  const keep = (l: Lesson) => { const gs = lessonGroups(l); return !gs.length || gs.some((g) => !hidden.has(g)); };
+  return { ...week, days: week.days.map((d) => ({ ...d, lessons: d.lessons.filter(keep) })) };
+}

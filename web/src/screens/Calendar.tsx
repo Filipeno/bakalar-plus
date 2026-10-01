@@ -13,7 +13,7 @@ export function useClassEntries() {
   const s = settings.value.school?.url ?? "";
   const on = !!user.value && cloud.cloudAvailable() && !!s;
   return useData(on ? `cls:${s}:${user.value!.uid}` : null,
-    () => cloud.listEntries(s, addDays(today(), -60), addDays(today(), 200)), 5 * 60_000);
+    () => cloud.listEntries(s, addDays(today(), -60), addDays(today(), 200)), 60_000);
 }
 
 type Source = "school" | "hw" | "class";
@@ -127,20 +127,28 @@ export function Calendar() {
         ))}
       </div>
 
-      <ItemSheet item={open} onClose={() => setOpen(null)} onEdit={(e) => { setOpen(null); setEdit(e); }} onChanged={cls.reload} />
-      <EntryEditor entry={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); setFilt((f) => ({ ...f, class: true })); cls.reload(); }} />
+      <ItemSheet item={open} onClose={() => setOpen(null)} onEdit={(e) => { setOpen(null); setEdit(e); }} onChanged={(gone) => {
+        if (gone && cls.data) cls.set({ ...cls.data, entries: cls.data.entries.filter((x) => x.id !== gone) });
+        cls.reload();
+      }} />
+      <EntryEditor entry={edit} onClose={() => setEdit(null)} onSaved={(saved) => {
+        setEdit(null); setFilt((f) => ({ ...f, class: true }));
+        // Show it at once; the reload then brings classmates' changes too.
+        if (cls.data) cls.set({ ...cls.data, entries: [...cls.data.entries.filter((x) => x.id !== saved.id), saved].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)) });
+        cls.reload();
+      }} />
     </Page>
   );
 }
 
-function ItemSheet({ item, onClose, onEdit, onChanged }: { item: Item | null; onClose: () => void; onEdit: (e: ClassEntry) => void; onChanged: () => void }) {
+function ItemSheet({ item, onClose, onEdit, onChanged }: { item: Item | null; onClose: () => void; onEdit: (e: ClassEntry) => void; onChanged: (deleted?: string) => void }) {
   const [msg, setMsg] = useState("");
   const [sure, setSure] = useState(false);
   useEffect(() => { setSure(false); setMsg(""); }, [item]);
   const school = settings.value.school?.url ?? "";
   const e = item?.entry;
   const act = async (fn: () => Promise<unknown>, done: string) => {
-    try { await fn(); setMsg(done); onChanged(); if (done !== t("reported")) onClose(); } catch (err) { setMsg(errorText(err)); }
+    try { await fn(); setMsg(done); onChanged(done === t("delete") ? e?.id : undefined); if (done !== t("reported")) onClose(); } catch (err) { setMsg(errorText(err)); }
   };
   return (
     <Sheet open={!!item} onClose={() => { setMsg(""); setSure(false); onClose(); }} title={item?.title}
@@ -169,7 +177,7 @@ function ItemSheet({ item, onClose, onEdit, onChanged }: { item: Item | null; on
   );
 }
 
-function EntryEditor({ entry, onClose, onSaved }: { entry: Partial<ClassEntry> | null; onClose: () => void; onSaved: () => void }) {
+function EntryEditor({ entry, onClose, onSaved }: { entry: Partial<ClassEntry> | null; onClose: () => void; onSaved: (e: ClassEntry) => void }) {
   const [f, setF] = useState<Partial<ClassEntry>>({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -183,9 +191,9 @@ function EntryEditor({ entry, onClose, onSaved }: { entry: Partial<ClassEntry> |
     setBusy(true); setErr("");
     const body = { date: cur.date, time: cur.time ?? "", kind: cur.kind ?? "other", title: cur.title.trim(), note: (cur.note ?? "").trim() };
     try {
-      if (cur.id) await cloud.updateEntry(school, cur.id, body); else await cloud.addEntry(school, body);
+      const saved = cur.id ? await cloud.updateEntry(school, cur.id, body) : await cloud.addEntry(school, body);
       setF({});
-      onSaved();
+      onSaved(saved);
     } catch (e) { setErr(errorText(e)); }
     setBusy(false);
   };

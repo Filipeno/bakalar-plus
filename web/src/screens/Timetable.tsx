@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Day, Lesson, Target, Term } from "../lib/model";
-import { dowOf, targetKey, today } from "../lib/model";
+import { dowOf, filterGroups, targetKey, today } from "../lib/model";
 import { dayShort, t } from "../lib/i18n";
 import { useDirectory, useHomework, useWeek, type Source } from "../lib/data";
 import { patchSettings, settings, user } from "../lib/store";
 import { Icon } from "../ui/icons";
 import { Empty, ErrorBox, Loading, Page, Segmented, Updated, usePullToRefresh } from "../ui/kit";
 import { DayList, LessonSheet, WeekGrid } from "../ui/timetable";
-import { isFav, KIND_ICON, TargetPicker, toggleFav } from "../ui/picker";
+import { GroupChips, isFav, KIND_ICON, pickedGroups, TargetPicker, toggleFav } from "../ui/picker";
 import { go, isTab, route } from "../ui/router";
 
 export function Timetable() {
@@ -27,13 +27,17 @@ export function Timetable() {
 
   const term = (q.term as Term) || "actual";
   const week = useWeek(src, term);
+  // A class timetable (or "my" class without a login) can be narrowed to the groups you're in.
+  const groupClass = src?.kind === "class" ? src : src?.kind === "my" && !user.value ? settings.value.myTarget : null;
+  const picked = pickedGroups(groupClass);
+  const shown = useMemo(() => (week.data ? filterGroups(week.data, picked) : undefined), [week.data, picked.join()]);
   const [picker, setPicker] = useState(!src);
   const [sel, setSel] = useState<{ l: Lesson; d: Day } | null>(null);
   const view = settings.value.view;
   usePullToRefresh(week.reload);
 
   // Which day is shown in day view: today in this week, Monday otherwise (and after the last school day).
-  const days = week.data?.days ?? [];
+  const days = shown?.days ?? [];
   const defaultDow = () => {
     if (term !== "actual") return days[0]?.dow ?? 1;
     const d = dowOf(today());
@@ -99,6 +103,8 @@ export function Timetable() {
         </div>
       )}
 
+      {groupClass?.kind === "class" && <GroupChips classId={groupClass.id} week={week.data} />}
+
       {!src && <Empty icon="calendar-blank" text={t("searchTarget")}><button class="btn" onClick={() => setPicker(true)}>{t("search")}</button></Empty>}
       {src && week.loading && !week.data && <Loading />}
       {src && week.error != null && <ErrorBox error={week.error} onRetry={week.reload} />}
@@ -124,7 +130,7 @@ export function Timetable() {
           <DayList day={day} view={src!.kind} onLesson={(l) => setSel({ l, d: day! })} />
         </div>
       )}
-      {week.data && view === "week" && <WeekGrid week={week.data} view={src!.kind} onLesson={(l, d) => setSel({ l, d })} />}
+      {shown && view === "week" && <WeekGrid week={shown} view={src!.kind} onLesson={(l, d) => setSel({ l, d })} />}
       {week.data && <Updated at={week.at} loading={week.loading} onRefresh={week.reload} />}
 
       <TargetPicker open={picker} onClose={() => setPicker(false)} allowMy onPick={open} />

@@ -17,12 +17,13 @@ export interface Settings {
   onboarded: boolean;
   view: "day" | "week";
   compare: Target[];
+  groups: Record<string, string[]>; // public class id -> the groups picked for it (AJ_1, TV_2...)
 }
 
 const DEFAULTS: Settings = {
   school: null, publicOk: true, myTarget: null, favourites: [], lang: "auto", theme: "auto",
   notify: { changes: true, grades: true, homework: true, messages: true, evening: true, eveningHour: 19 },
-  onboarded: false, view: "day", compare: [],
+  onboarded: false, view: "day", compare: [], groups: {},
 };
 
 const read = <T,>(key: string, fallback: T): T => {
@@ -61,6 +62,8 @@ addEventListener("offline", () => (online.value = false));
 
 interface Cached<T> { t: number; v: T }
 const mem = new Map<string, Cached<unknown>>();
+/** Last cache write, so every screen showing the same key picks it up (Today after adding an entry in Calendar). */
+const written = signal<{ k: string; t: number } | null>(null);
 
 export function readCache<T>(key: string): Cached<T> | null {
   if (mem.has(key)) return mem.get(key) as Cached<T>;
@@ -76,6 +79,7 @@ export function readCache<T>(key: string): Cached<T> | null {
 export function writeCache<T>(key: string, v: T) {
   const c = { t: Date.now(), v };
   mem.set(key, c);
+  written.value = { k: key, t: c.t };
   try { localStorage.setItem(`bp.c.${key}`, JSON.stringify(c)); }
   catch { clearCache(); try { localStorage.setItem(`bp.c.${key}`, JSON.stringify(c)); } catch { /* too big: memory only */ } }
 }
@@ -89,7 +93,7 @@ export function clearCache() {
 export const resumeTick = signal(0);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") resumeTick.value++; });
 
-export interface DataState<T> { data?: T; error?: unknown; loading: boolean; at?: number; reload: () => void }
+export interface DataState<T> { data?: T; error?: unknown; loading: boolean; at?: number; reload: () => void; set: (v: T) => void }
 
 /**
  * Stale-while-revalidate: shows the saved copy at once (also offline), fetches when it is older than `ttl`.
@@ -124,5 +128,17 @@ export function useData<T>(key: string | null, fetcher: () => Promise<T>, ttl = 
     if (!c || Date.now() - c.t > ttl) run(key);
   }, [key, resumeTick.value]);
 
-  return { ...st, reload: () => key && run(key) };
+  const w = written.value;
+  useEffect(() => {
+    if (!w || w.k !== key || (st.at ?? 0) >= w.t) return;
+    const c = readCache<T>(key);
+    if (c) setSt((s) => ({ ...s, data: c.v, at: c.t }));
+  }, [w]);
+
+  return {
+    ...st,
+    reload: () => key && run(key),
+    /** Show a known result at once (e.g. the entry just saved), before the next fetch confirms it. */
+    set: (v: T) => { if (key) { writeCache(key, v); setSt((s) => ({ ...s, data: v, at: Date.now() })); } },
+  };
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "preact/hooks";
-import type { Target, TargetKind } from "../lib/model";
-import { targetKey } from "../lib/model";
+import type { Target, TargetKind, Week } from "../lib/model";
+import { groupFamilies, targetKey } from "../lib/model";
 import { t } from "../lib/i18n";
 import { useDirectory } from "../lib/data";
 import { patchSettings, settings, user } from "../lib/store";
@@ -79,3 +79,28 @@ export function TargetPicker({ open, onClose, onPick, allowMy, kinds = ["class",
     </Sheet>
   );
 }
+
+/** The groups a class is split into for some subjects. One pick per set (AJ_1 or AJ_2), remembered per class. */
+export function GroupChips({ classId, week }: { classId: string; week?: Week }) {
+  const fams = useMemo(() => groupFamilies(week), [week]);
+  if (!fams.length) return null;
+  const picked = settings.value.groups[classId] ?? [];
+  const toggle = (fam: string[], g: string) => {
+    const rest = picked.filter((x) => !fam.includes(x));
+    patchSettings({ groups: { ...settings.value.groups, [classId]: picked.includes(g) ? rest : [...rest, g] } });
+  };
+  return (
+    <div class="chips scroll group-chips" aria-label={t("groups")}>
+      <span class="group-label">{t("groups")}</span>
+      {fams.map((f, i) => (
+        <>
+          {i > 0 && <span class="chip-sep" />}
+          {f.map((g) => <button class={`chip ${picked.includes(g) ? "on" : ""}`} onClick={() => toggle(f, g)}>{g}</button>)}
+        </>
+      ))}
+    </div>
+  );
+}
+
+export const pickedGroups = (tg: Pick<Target, "kind" | "id"> | null | undefined) =>
+  tg?.kind === "class" ? settings.value.groups[tg.id] ?? [] : [];

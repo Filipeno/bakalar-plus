@@ -4,7 +4,7 @@ import { dayShort, fmtDate, fmtRelDay, t, type TKey } from "../lib/i18n";
 import type { Homework } from "../lib/bakalari";
 import { Icon } from "./icons";
 import { Row, Sheet, subjectColor } from "./kit";
-import { findClass, findRoom, findTeacher, useDirectory } from "../lib/data";
+import { findClass, findRoom, findTeacher, useCabinets, useDirectory } from "../lib/data";
 import { go } from "./router";
 import { settings, user } from "../lib/store";
 import { prefs } from "./prefs";
@@ -164,12 +164,14 @@ export function WeekGrid({ week, view, onLesson }: { week: Week; view: TargetKin
 
 export function LessonSheet({ lesson, day, hw, onClose }: { lesson: Lesson | null; day?: Day | null; hw?: Homework[]; onClose: () => void }) {
   const dir = useDirectory().data;
+  const cabs = useCabinets().data;
   const l = lesson;
   const open = (target?: { kind: string; id: string; name?: string }) => {
     if (target) { onClose(); setTimeout(() => go("/timetable", { k: target.kind, id: target.id, n: target.name }), 50); }
   };
   const teacherT = l ? findTeacher(dir, l.teacher, l.teacherName) : undefined;
   const roomT = l ? findRoom(dir, l.room) : undefined;
+  const cab = teacherT && cabs?.[teacherT.id];
   const classT = l ? findClass(dir, l.group) : undefined;
   const canLink = settings.value.publicOk;
   const h = l ? lessonHomework(l, day?.date, hw) : undefined;
@@ -200,7 +202,7 @@ export function LessonSheet({ lesson, day, hw, onClose }: { lesson: Lesson | nul
           {l.group && !classT && <><div class="sheet-label">{t("group")}</div><div class="sheet-val">{l.group}</div></>}
           {canLink && (teacherT || roomT || classT) && (
             <div class="link-list">
-              {teacherT && <Row icon="user" title={l.teacherName} sub={t("teacher")} chevron onClick={() => open(teacherT)} />}
+              {teacherT && <Row icon="user" title={l.teacherName} sub={cab ? `${t("teacher")} · ${t("cabinetX", { r: cab.room })}` : t("teacher")} chevron onClick={() => open(teacherT)} />}
               {roomT && <Row icon="door" title={l.roomName || l.room} sub={t("room")} chevron onClick={() => open(roomT)} />}
               {classT && <Row icon="users" title={l.group} sub={t("group")} chevron onClick={() => open(classT)} />}
             </div>

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { Day, Hour, Lesson, Target, Term, Week } from "../lib/model";
-import { dayFor, dowOf, hhmm, liveLessons, nowMin, targetKey, toMin, today } from "../lib/model";
+import { dayFor, dowOf, filterGroups, hhmm, liveLessons, nowMin, targetKey, toMin, today } from "../lib/model";
 import { dayShort, fmtDate, t } from "../lib/i18n";
-import { loadWeek, useDirectory, weekCacheKey } from "../lib/data";
-import { patchSettings, readCache, settings, writeCache } from "../lib/store";
+import { loadWeek, useCabinets, useDirectory, weekCacheKey } from "../lib/data";
+import { patchSettings, readCache, settings, user, writeCache } from "../lib/store";
+import { setCabinet } from "../lib/cloud";
 import { Icon } from "../ui/icons";
-import { Empty, ErrorBox, Page, Segmented, Spinner } from "../ui/kit";
-import { KIND_ICON, TargetPicker } from "../ui/picker";
+import { Empty, ErrorBox, Page, Segmented, Sheet, Spinner, errorText } from "../ui/kit";
+import { GroupChips, KIND_ICON, pickedGroups, TargetPicker } from "../ui/picker";
 import { LessonSheet } from "../ui/timetable";
 import { go, isTab } from "../ui/router";
 
@@ -159,11 +160,12 @@ function ToolTabs({ on }: { on: "where" | "rooms" }) {
   );
 }
 
-function statusAt(week: Week | undefined, iso: string, min: number): { now?: Lesson; next?: Lesson } {
+/** What's on at `min`: every lesson of that period (a split class has one per group), and the next one. */
+function statusAt(week: Week | undefined, iso: string, min: number): { now: Lesson[]; next?: Lesson } {
   const d = dayFor(week, iso);
-  if (!d || d.off) return {};
+  if (!d || d.off) return { now: [] };
   const ls = liveLessons(d);
-  return { now: ls.find((l) => min >= toMin(l.begin) && min < toMin(l.end)), next: ls.find((l) => toMin(l.begin) > min) };
+  return { now: ls.filter((l) => min >= toMin(l.begin) && min < toMin(l.end)), next: ls.find((l) => toMin(l.begin) > min) };
 }
 
 export function WhereNow() {
@@ -179,8 +181,14 @@ export function WhereNow() {
   const min = when === "now" ? nowMin() : toMin(when) + 1;
   const hours = periodsOf([...weeks.values()]);
   const tg = targets.find((x) => targetKey(x) === who) ?? targets[0];
-  const w = tg ? weeks.get(targetKey(tg)) : undefined;
-  const { now, next } = statusAt(w, td, min);
+  const raw = tg ? weeks.get(targetKey(tg)) : undefined;
+  const picked = pickedGroups(tg);
+  const w = useMemo(() => raw && filterGroups(raw, picked), [raw, picked.join()]);
+  const { now: nowAll, next } = statusAt(w, td, min);
+  const now = nowAll[0];
+  const cabs = useCabinets();
+  const [editCab, setEditCab] = useState(false);
+  const cab = tg?.kind === "teacher" ? cabs.data?.[tg.id] : undefined;
   const hr = hours.find((h) => min >= toMin(h.begin) && min < toMin(h.end));
   const kicker = when === "now" ? (hr ? t("rightNowPeriod", { p: hr.caption }) : t("rightNow")) : t("atPeriod", { p: hr?.caption ?? "", t: hhmm(when) });
 
@@ -190,7 +198,7 @@ export function WhereNow() {
       <div class="chips">
         {targets.map((x) => (
           <button class={`chip ${tg && targetKey(tg) === targetKey(x) ? "on" : ""}`} onClick={() => setWho(targetKey(x))}>
-            <Icon name={KIND_ICON[x.kind]} size={14} />{x.name}
+            <Icon name={KIND_ICON[x.kind]} size={14} />{[x.name, ...pickedGroups(x)].join(" · ")}
           </button>
         ))}
         <button class="chip" onClick={() => setPicker(true)}><Icon name="magnifying-glass" size={14} />{t("search")}</button>
@@ -205,16 +213,33 @@ export function WhereNow() {
       {tg && (
         <div class="where-card">
           <div class="kicker">{kicker}</div>
-          {!w ? <div style={{ marginTop: "8px" }}><Spinner small /></div> : now ? (
+          {!w ? <div style={{ marginTop: "8px" }}><Spinner small /></div> : nowAll.length > 1 ? (
+            <div class="where-groups">
+              {nowAll.map((l) => (
+                <button class="where-group" onClick={() => setSel(l)}>
+                  <b>{l.room ? t("roomX", { r: l.room }) : "—"}</b>
+                  <span>{[l.group, l.subjectName || l.subject, tg.kind === "teacher" ? "" : l.teacherName].filter(Boolean).join(" · ")}</span>
+                </button>
+              ))}
+              <div class="detail">{t("untilT", { t: hhmm(now.end) })}</div>
+            </div>
+          ) : now ? (
             <>
               <button class="where-room" onClick={() => setSel(now)}>{now.room ? t("roomX", { r: now.room }) : "—"}</button>
-              <div class="detail">{[now.subjectName || now.subject, tg.kind === "teacher" ? now.group : now.teacherName, t("untilT", { t: hhmm(now.end) })].filter(Boolean).join(" · ")}</div>
+              <div class="detail">{[now.subjectName || now.subject, tg.kind === "teacher" ? now.group : [now.group, now.teacherName].filter(Boolean).join(" · "), t("untilT", { t: hhmm(now.end) })].filter(Boolean).join(" · ")}</div>
             </>
           ) : (
             <>
               <div class="where-room">{dowOf(td) > 5 || !dayFor(w, td) ? t("noSchoolToday") : next ? t("free") : t("notInSchool")}</div>
               {next && <div class="detail">{t("nextRoomAt", { r: next.room || "—", t: hhmm(next.begin) })}</div>}
             </>
+          )}
+          {tg.kind === "teacher" && user.value && cabs.data && (
+            <button class="where-cab" onClick={() => setEditCab(true)}>
+              <Icon name="door" size={16} />
+              <span class="grow">{cab ? t("cabinetX", { r: cab.room }) : t("cabinetUnknown")}</span>
+              <span class="link">{cab ? t("edit") : t("cabinetAdd")}</span>
+            </button>
           )}
           <div class="btn-row">
             <button class="btn small line" onClick={() => go("/timetable", { k: tg.kind, id: tg.id, n: tg.name })}>
@@ -223,10 +248,46 @@ export function WhereNow() {
           </div>
         </div>
       )}
+      {tg?.kind === "class" && <div style={{ marginTop: "12px" }}><GroupChips classId={tg.id} week={raw} /></div>}
+      {tg?.kind === "teacher" && (
+        <CabinetSheet open={editCab} teacher={tg} room={cab?.room ?? ""} onClose={() => setEditCab(false)}
+          onSaved={(room) => {
+            const all = { ...cabs.data };
+            if (room) all[tg.id] = { room, by: "", updated: Date.now() }; else delete all[tg.id];
+            cabs.set(all); setEditCab(false);
+          }} />
+      )}
       <TargetPicker open={picker} onClose={() => setPicker(false)} kinds={["teacher", "class"]} title={t("whereNow")}
         onPick={(x) => { if (x !== "my") { setExtra(x); setWho(targetKey(x)); } }} />
       <LessonSheet lesson={sel} onClose={() => setSel(null)} />
     </Page>
+  );
+}
+
+function CabinetSheet({ open, teacher, room, onClose, onSaved }: {
+  open: boolean; teacher: Target; room: string; onClose: () => void; onSaved: (room: string) => void;
+}) {
+  const [v, setV] = useState(room);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => { if (open) { setV(room); setErr(""); } }, [open]);
+  const save = async (r: string) => {
+    setBusy(true); setErr("");
+    try { await setCabinet(settings.value.school?.url ?? "", teacher.id, r); onSaved(r.trim()); } catch (e) { setErr(errorText(e)); }
+    setBusy(false);
+  };
+  return (
+    <Sheet open={open} onClose={onClose} title={t("cabinet")} sub={teacher.name}>
+      <form class="form" style={{ marginTop: "14px" }} onSubmit={(e) => { e.preventDefault(); if (v.trim()) save(v); }}>
+        <input maxLength={40} placeholder={t("cabinetPh")} aria-label={t("cabinet")} value={v} onInput={(e) => setV((e.target as HTMLInputElement).value)} />
+        <p class="hint">{t("cabinetHint")}</p>
+        {err && <p class="hint err-text">{err}</p>}
+        <div class="btn-row">
+          <button class="btn" disabled={busy || !v.trim() || v.trim() === room}>{busy ? <Spinner small /> : t("save")}</button>
+          {room && <button type="button" class="btn line" disabled={busy} onClick={() => save("")}><Icon name="trash" size={18} />{t("delete")}</button>}
+        </div>
+      </form>
+    </Sheet>
   );
 }
 

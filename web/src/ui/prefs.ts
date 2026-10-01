@@ -52,7 +52,8 @@ export const SECTION_NEEDS: Record<Section, "login" | "public" | null> = {
 };
 
 // iPhone (Safari or home-screen app) gets the iOS look: system font, large titles, "Back" text, blurred tab bar.
-export const platform = isAndroid ? "android" : isIos() ? "ios" : "web";
+// Android (app or browser) gets Material 3 Expressive.
+export const platform = isAndroid || /Android/i.test(navigator.userAgent) ? "android" : isIos() ? "ios" : "web";
 
 effect(() => {
   const p = prefs.value;

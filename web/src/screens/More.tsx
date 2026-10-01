@@ -9,6 +9,7 @@ import { Empty, ErrorBox, Loading, NeedLogin as NeedLoginBox, Page, Row, Section
 import { go, isTab } from "../ui/router";
 import { SECTION_META, available, tabSections } from "../ui/sections";
 import { sectionPath } from "../ui/prefs";
+import { wide } from "../ui/layout";
 
 export function NeedLogin() {
   return <NeedLoginBox onLogin={() => go("/login")} />;
@@ -90,14 +91,17 @@ export function Messages() {
   const backable = !isTab("/messages");
   if (!user.value) return <Page title={t("messages")} backable={backable}><NeedLogin /></Page>;
   const td = today();
+  // Desktop: inbox on the left, the open message in a reading pane on the right.
+  const pane = wide.value ? open ?? msgs.data?.[0] ?? null : null;
   return (
     <Page title={t("messages")} backable={backable}>
       {msgs.loading && !msgs.data && <Loading />}
       {msgs.error != null && <ErrorBox error={msgs.error} onRetry={msgs.reload} />}
       {msgs.data && !msgs.data.length && <Empty icon="envelope-simple" text={t("noMessages")} />}
-      <div class="stack">
+      <div class={pane ? "split msgs" : ""}>
+      <div class="stack split-main">
         {(msgs.data ?? []).map((m) => (
-          <button class={`row msg-row ${m.read ? "" : "unread"}`} onClick={() => setOpen(m)}>
+          <button class={`row msg-row ${m.read ? "" : "unread"} ${pane === m ? "sel" : ""}`} onClick={() => setOpen(m)}>
             <span class="unread-dot" />
             <span class="row-main">
               <span class="msg-top">
@@ -110,8 +114,17 @@ export function Messages() {
           </button>
         ))}
       </div>
+      {pane && (
+        <article class="split-side reader">
+          <h2>{pane.title || pane.sender}</h2>
+          <div class="reader-from"><span class="reader-av">{pane.sender.replace(/^(\S+\.\s*)+/, "").slice(0, 2).toUpperCase()}</span>
+            <span><b>{pane.sender}</b><small>{fmtDate(pane.date.slice(0, 10), true)} {pane.date.slice(11, 16)}{pane.board ? ` · ${t("noticeboard")}` : ""}</small></span></div>
+          <p class="msg-body pre">{linkify(pane.text)}</p>
+        </article>
+      )}
+      </div>
       {msgs.data && <Updated at={msgs.at} loading={msgs.loading} onRefresh={msgs.reload} />}
-      <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.title || open?.sender} full
+      <Sheet open={!!open && !wide.value} onClose={() => setOpen(null)} title={open?.title || open?.sender} full
         sub={open ? `${open.sender} · ${fmtDate(open.date.slice(0, 10), true)} ${open.date.slice(11, 16)}` : ""}>
         {open && <p class="msg-body pre">{linkify(open.text)}</p>}
       </Sheet>

@@ -7,6 +7,7 @@ import { user } from "../lib/store";
 import { Icon } from "../ui/icons";
 import { Empty, ErrorBox, Loading, NeedLogin, Page, Section, Segmented, Updated, usePullToRefresh } from "../ui/kit";
 import { go, isTab, route } from "../ui/router";
+import { wide } from "../ui/layout";
 
 export function weightedAverage(marks: { value: number | null; weight: number }[]): number | null {
   let s = 0, w = 0;
@@ -25,7 +26,9 @@ export function Grades() {
   if (!user.value) return <Page title={t("tabGrades")} backable={backable}><NeedLogin onLogin={() => go("/login")} /></Page>;
   const sid = route.value.q.s;
   const subj = marks.data?.find((s) => s.id === sid);
-  if (sid && subj) return <SubjectDetail s={subj} />;
+  if (sid && subj && !wide.value) return <SubjectDetail s={subj} />;
+  // Desktop: list on the left, the selected subject's calculator on the right.
+  const panel = wide.value ? subj ?? marks.data?.[0] : undefined;
 
   const avgs = (marks.data ?? []).map((s) => parseAvg(s.average) ?? weightedAverage(s.marks)).filter((x): x is number => x !== null);
   const overall = avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
@@ -37,6 +40,8 @@ export function Grades() {
       {marks.loading && !marks.data && <Loading />}
       {marks.error != null && <ErrorBox error={marks.error} onRetry={marks.reload} />}
       {marks.data && !marks.data.length && <Empty icon="chart-line-up" text={t("noGrades")} />}
+      <div class={panel ? "split" : ""}>
+      <div class="split-main">
       {overall !== null && (
         <div class="overall">
           <b>{fmtAvg(overall)}</b>
@@ -50,7 +55,7 @@ export function Grades() {
           // Only highlight the heaviest marks when weights actually differ – with equal weights every mark would be "heavy".
           const mixed = new Set(s.marks.map((m) => m.weight)).size > 1;
           return (
-            <button class="subject" onClick={() => go("/grades", { s: s.id })}>
+            <button class={`subject ${panel?.id === s.id ? "sel" : ""}`} onClick={() => go("/grades", { s: s.id }, !!panel)}>
               <span class="subject-head">
                 <span class="subject-name">{s.name}</span>
                 <span class={`avg ${avgClass(avg)}`}>{s.average || fmtAvg(avg)}</span>
@@ -65,17 +70,29 @@ export function Grades() {
           );
         })}
       </div>
+      </div>
+      {panel && <aside class="split-side"><div class="panel-head"><h2>{panel.name}</h2><span class="muted">{t("average")}: {panel.average || fmtAvg(weightedAverage(panel.marks))}</span></div><SubjectBody s={panel} key={panel.id} /></aside>}
+      </div>
       {marks.data && <Updated at={marks.at} loading={marks.loading} onRefresh={marks.reload} />}
     </Page>
   );
 }
 
 function SubjectDetail({ s }: { s: SubjectMarks }) {
+  const current = weightedAverage(s.marks);
+  return (
+    <Page title={s.name} backable sub={`${t("average")}: ${s.average || fmtAvg(current)}`}>
+      <SubjectBody s={s} />
+    </Page>
+  );
+}
+
+/** Grade calculator + marks of one subject (a page on phones, the side panel on desktop). */
+function SubjectBody({ s }: { s: SubjectMarks }) {
   const [extra, setExtra] = useState<Mark[]>([]);
   const [target, setTarget] = useState(1.5);
   const [w, setW] = useState(() => Math.max(1, ...s.marks.map((m) => m.weight)));
   const all = [...s.marks, ...extra];
-  const current = weightedAverage(s.marks);
   const withExtra = weightedAverage(all);
 
   // Needed grade x with weight w: (S + x·w) / (W + w) = target  →  x = (target·(W+w) − S) / w
@@ -90,7 +107,7 @@ function SubjectDetail({ s }: { s: SubjectMarks }) {
   const addMark = (v: number) => setExtra([...extra, { id: `x${extra.length}`, text: String(v), value: v, weight: w, caption: t("hypothetical"), theme: "", date: "", isNew: false }]);
 
   return (
-    <Page title={s.name} backable sub={`${t("average")}: ${s.average || fmtAvg(current)}`}>
+    <>
       {s.pointsOnly && <div class="banner">{t("pointsOnly")}</div>}
       <div class="label">{t("calculator")}</div>
       <div class="field-label">{t("goal")}</div>
@@ -127,7 +144,7 @@ function SubjectDetail({ s }: { s: SubjectMarks }) {
           {s.marks.map((m) => <MarkRow m={m} />)}
         </div>
       </Section>
-    </Page>
+    </>
   );
 }
 

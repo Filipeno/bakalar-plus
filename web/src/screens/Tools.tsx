@@ -241,7 +241,10 @@ export function WhereNow() {
           {tg.kind === "teacher" && user.value && cabs.data && (
             <button class="where-cab" onClick={() => setEditCab(true)}>
               <Icon name="door" size={16} />
-              <span class="grow">{cab ? t("cabinetX", { r: cab.room }) : t("cabinetUnknown")}</span>
+              <span class="grow">
+                {cab ? t("cabinetX", { r: cab.room }) : t("cabinetUnknown")}
+                {cab?.by && <small class="where-cab-by">{cab.by}</small>}
+              </span>
               <span class="link">{cab ? t("edit") : t("cabinetAdd")}</span>
             </button>
           )}

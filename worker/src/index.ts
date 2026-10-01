@@ -184,8 +184,14 @@ const MAX_CABINET_EDITS = 60;
 async function cabinets(req: Request, url: URL, env: Env, s: Session): Promise<Response> {
   if (!s.sk) return fail("unauthorized", 401);   // a session from before cabinets: the app gets a new one and retries
   if (url.pathname === "/cal/cabinets" && req.method === "GET") {
-    const { results } = await env.DB.prepare("SELECT teacher, room, author_name, updated FROM cabinets WHERE school_key = ?").bind(s.sk).all<any>();
-    return json({ cabinets: Object.fromEntries(results.map((r) => [r.teacher, { room: r.room, by: r.author_name, updated: r.updated }])) });
+    const [cab, con] = await env.DB.batch([
+      env.DB.prepare("SELECT teacher, room, author_name, updated FROM cabinets WHERE school_key = ?").bind(s.sk),
+      env.DB.prepare("SELECT teacher, hours FROM consultations WHERE school_key = ?").bind(s.sk),
+    ]);
+    const out: Record<string, { room: string; by: string; updated: number; hours?: string }> = {};
+    for (const r of cab.results as any[]) out[r.teacher] = { room: r.room, by: r.author_name, updated: r.updated };
+    for (const r of con.results as any[]) out[r.teacher] = { ...(out[r.teacher] ?? { room: "", by: "", updated: 0 }), hours: r.hours };
+    return json({ cabinets: out });
   }
   const m = /^\/cal\/cabinets\/([^/]{1,120})$/.exec(url.pathname);
   if (!m || req.method !== "PUT") return fail("not found", 404);

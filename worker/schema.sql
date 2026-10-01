@@ -34,6 +34,14 @@ CREATE TABLE IF NOT EXISTS cabinets (
   PRIMARY KEY (school_key, teacher)
 );
 CREATE INDEX IF NOT EXISTS cabinets_author ON cabinets (author_hash, updated);
+-- Teachers' consultation hours, from the school's own list (scripts/seed-cabinets.mjs); students don't edit these.
+CREATE TABLE IF NOT EXISTS consultations (
+  school_key TEXT NOT NULL,
+  teacher TEXT NOT NULL,
+  hours TEXT NOT NULL,                -- "Čtvrtek 12:40-13:25 · nebo dle dohody"
+  source TEXT NOT NULL,               -- "konzultační hodiny 2025/26"
+  PRIMARY KEY (school_key, teacher)
+);
 
 -- Web Push (web/iPhone version). id = same user key as the calendar's author_hash.
 CREATE TABLE IF NOT EXISTS push_users (

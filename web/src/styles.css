@@ -462,6 +462,8 @@ p { margin: 0; }
 .where-group span { font-size: 13px; color: var(--mu); }
 .where-cab { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 12px; padding: 8px 0 0; border-top: 1px solid var(--dv); color: inherit; font-size: 14px; text-align: left; }
 .where-cab .grow { flex: 1; min-width: 0; }
+.where-cab.static { cursor: default; }
+.where-cab.static + .btn-row, .where-cab + .where-cab { margin-top: 0; }
 .where-cab-by { display: block; font-size: 12px; color: var(--mu); }
 .group-box { margin-top: 10px; border-radius: 12px; background: var(--sf); }
 .group-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; color: inherit; text-align: left; }

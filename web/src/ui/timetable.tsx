@@ -171,7 +171,7 @@ export function LessonSheet({ lesson, day, hw, onClose }: { lesson: Lesson | nul
   };
   const teacherT = l ? findTeacher(dir, l.teacher, l.teacherName) : undefined;
   const roomT = l ? findRoom(dir, l.room) : undefined;
-  const cab = teacherT && cabs?.[teacherT.id];
+  const cab = teacherT && cabs?.[teacherT.id]?.room ? cabs[teacherT.id] : undefined;
   const classT = l ? findClass(dir, l.group) : undefined;
   const canLink = settings.value.publicOk;
   const h = l ? lessonHomework(l, day?.date, hw) : undefined;

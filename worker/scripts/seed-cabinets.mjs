@@ -4,9 +4,9 @@
 //   node scripts/seed-cabinets.mjs <school address> <list.json> [more.json ...] --out .wrangler/cabinets.sql
 //   npx wrangler d1 execute bakalar-plus --remote --file .wrangler/cabinets.sql
 //
-// A list is {"SURNAME Firstname": {room, year?} | {room, via?, conf?} | {room, by?}} with names as the school's public
-// timetable writes them. Rows from a school website get "web školy (year)", guesses "odhad podle kolegů (subjects)"
-// (skipped below 40 % confidence). Existing rows (students' entries) are never overwritten.
+// A list is {"SURNAME Firstname": {room, year?} | {room, via?, conf?} | {room?, by?, hours?}} (konzultace-pdf.py makes one from
+// a school's consultation-hours PDF). Rows from a school website get "web školy (year)", guesses "odhad podle kolegů (subjects)"
+// (skipped below 40 % confidence). A student's own entry is never overwritten; earlier seeded rows are.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -32,18 +32,36 @@ const ids = new Map([...select.matchAll(/value="([^"]+)"[^>]*>\s*([^<]*?)\s*</g)
 if (!ids.size) { console.error("no teachers in the public timetable"); process.exit(1); }
 
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
+// Names match whatever the word order ("ŠKUBALA Ondřej" / "Ondřej ŠKUBALA"); double surnames match on surname + first name.
+const words = (n) => fold(n).split(" ");
+const sameSet = (a, b) => a.length === b.length && a.every((w) => b.includes(w));
+const findId = (name) => {
+  const w = words(name);
+  for (const [k, id] of ids) if (sameSet(words(k), w)) return id;
+  const hits = [...ids].filter(([k]) => { const kw = words(k); return w.every((x) => kw.includes(x)) || kw.every((x) => w.includes(x)); });
+  return hits.length === 1 ? hits[0][1] : undefined;
+};
+
 const now = Date.now();
-const rows = [], missing = [];
-for (const file of files) {
+const cab = new Map(), con = new Map(), missing = [];
+for (const file of files) {        // earlier files win: list the newest source first
   for (const [name, c] of Object.entries(JSON.parse(readFileSync(file, "utf8")))) {
-    if (!c?.room || (c.conf !== undefined && c.conf < 0.4)) continue;
-    const id = ids.get(fold(name));
+    const id = findId(name);
     if (!id) { missing.push(name); continue; }
     const by = c.by ?? (c.year ? `web školy (${c.year})` : c.via ? `odhad podle kolegů (${[].concat(c.via).join(", ")})` : "");
-    rows.push(`(${q(schoolKey)}, ${q(id)}, ${q(c.room)}, 'seed', ${q(by)}, ${now})`);
+    if (c.room && !(c.conf !== undefined && c.conf < 0.4) && !cab.has(id)) cab.set(id, `(${q(schoolKey)}, ${q(id)}, ${q(c.room)}, 'seed', ${q(by)}, ${now})`);
+    if (c.hours && !con.has(id)) con.set(id, `(${q(schoolKey)}, ${q(id)}, ${q(c.hours)}, ${q(by)})`);
   }
 }
 if (missing.length) console.error(`not in the public timetable (skipped): ${missing.length}`);
-console.error(`${rows.length} cabinets`);
-console.log("INSERT OR IGNORE INTO cabinets (school_key, teacher, room, author_hash, author_name, updated) VALUES");
-console.log(rows.join(",\n") + ";");
+console.error(`${cab.size} cabinets, ${con.size} consultation hours`);
+
+// Replaces earlier seeded rows, never a student's entry.
+let sql = "";
+if (cab.size) {
+  sql += "INSERT INTO cabinets (school_key, teacher, room, author_hash, author_name, updated) VALUES\n" + [...cab.values()].join(",\n") +
+    "\nON CONFLICT (school_key, teacher) DO UPDATE SET room = excluded.room, author_name = excluded.author_name, updated = excluded.updated" +
+    " WHERE cabinets.author_hash = 'seed';\n";
+}
+if (con.size) sql += "INSERT OR REPLACE INTO consultations (school_key, teacher, hours, source) VALUES\n" + [...con.values()].join(",\n") + ";\n";
+if (out) writeFileSync(out, sql, "utf8"); else process.stdout.write(sql);

@@ -74,7 +74,7 @@ export const deleteEntry = (school: string, id: string) => call<null>(school, "D
 export const reportEntry = (school: string, id: string) => call<null>(school, "POST", `/cal/entries/${id}/report`);
 
 /** Where a teacher's cabinet is, filled in by the school's students. Keyed by the teacher's id in the public timetable. */
-export interface Cabinet { room: string; by: string; updated: number }
+export interface Cabinet { room: string; by: string; updated: number; hours?: string }
 export const listCabinets = (school: string) => call<{ cabinets: Record<string, Cabinet> }>(school, "GET", "/cal/cabinets");
 export const setCabinet = (school: string, teacher: string, room: string) =>
   call<Cabinet>(school, "PUT", `/cal/cabinets/${encodeURIComponent(teacher)}`, { room });

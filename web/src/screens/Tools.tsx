@@ -189,6 +189,7 @@ export function WhereNow() {
   const cabs = useCabinets();
   const [editCab, setEditCab] = useState(false);
   const cab = tg?.kind === "teacher" ? cabs.data?.[tg.id] : undefined;
+  const cabRoom = cab?.room || "";
   // Where a teacher usually is: their most used room over the whole permanent timetable.
   const perm = useWeek(tg?.kind === "teacher" ? tg : null, "permanent").data;
   const usual = useMemo(() => usualRoom(perm ?? raw), [perm, raw]);
@@ -237,16 +238,19 @@ export function WhereNow() {
               {next && <div class="detail">{t("nextRoomAt", { r: next.room || "—", t: hhmm(next.begin) })}</div>}
             </>
           )}
-          {tg.kind === "teacher" && usual && !cab && <div class="detail" style={{ marginTop: "8px" }}>{t("usualRoom", { r: usual })}</div>}
+          {tg.kind === "teacher" && usual && !cabRoom && <div class="detail" style={{ marginTop: "8px" }}>{t("usualRoom", { r: usual })}</div>}
           {tg.kind === "teacher" && user.value && cabs.data && (
             <button class="where-cab" onClick={() => setEditCab(true)}>
               <Icon name="door" size={16} />
               <span class="grow">
-                {cab ? t("cabinetX", { r: cab.room }) : t("cabinetUnknown")}
-                {cab?.by && <small class="where-cab-by">{cab.by}</small>}
+                {cab?.room ? t("cabinetX", { r: cab.room }) : t("cabinetUnknown")}
+                {cab?.room && cab.by && <small class="where-cab-by">{cab.by}</small>}
               </span>
-              <span class="link">{cab ? t("edit") : t("cabinetAdd")}</span>
+              <span class="link">{cab?.room ? t("edit") : t("cabinetAdd")}</span>
             </button>
+          )}
+          {tg.kind === "teacher" && cab?.hours && (
+            <div class="where-cab static"><Icon name="clock" size={16} /><span class="grow">{t("consultX", { h: cab.hours })}</span></div>
           )}
           <div class="btn-row">
             <button class="btn small line" onClick={() => go("/timetable", { k: tg.kind, id: tg.id, n: tg.name })}>
@@ -257,10 +261,10 @@ export function WhereNow() {
       )}
       {tg?.kind === "class" && <div style={{ marginTop: "12px" }}><GroupChips cls={tg} week={raw} /></div>}
       {tg?.kind === "teacher" && (
-        <CabinetSheet open={editCab} teacher={tg} room={cab?.room ?? ""} onClose={() => setEditCab(false)}
+        <CabinetSheet open={editCab} teacher={tg} room={cabRoom} onClose={() => setEditCab(false)}
           onSaved={(room) => {
             const all = { ...cabs.data };
-            if (room) all[tg.id] = { room, by: "", updated: Date.now() }; else delete all[tg.id];
+            if (room) all[tg.id] = { ...all[tg.id], room, by: "", updated: Date.now() }; else if (all[tg.id]?.hours) all[tg.id] = { ...all[tg.id], room: "", by: "" }; else delete all[tg.id];
             cabs.set(all); setEditCab(false);
           }} />
       )}

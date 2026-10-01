@@ -1,17 +1,20 @@
 // Turns a list of teachers' cabinets into SQL for the `cabinets` table, so a school's known cabinets show up
 // for its students before anyone fills them in. The list itself never goes into the repo.
 //
-//   node scripts/seed-cabinets.mjs <school address> <list.json> [more.json ...] > .wrangler/cabinets.sql
+//   node scripts/seed-cabinets.mjs <school address> <list.json> [more.json ...] --out .wrangler/cabinets.sql
 //   npx wrangler d1 execute bakalar-plus --remote --file .wrangler/cabinets.sql
 //
 // A list is {"SURNAME Firstname": {room, year?} | {room, via?, conf?} | {room, by?}} with names as the school's public
 // timetable writes them. Rows from a school website get "web školy (year)", guesses "odhad podle kolegů (subjects)"
 // (skipped below 40 % confidence). Existing rows (students' entries) are never overwritten.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
-const [school, ...files] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const outAt = args.indexOf("--out");
+const out = outAt >= 0 ? args.splice(outAt, 2)[1] : null;
+const [school, ...files] = args;
 if (!school || !files.length) {
   console.error("usage: node scripts/seed-cabinets.mjs <school address> <list.json> [more.json ...]");
   process.exit(1);

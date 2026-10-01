@@ -51,9 +51,10 @@ export const SECTION_NEEDS: Record<Section, "login" | "public" | null> = {
   today: null, timetable: null, grades: "login", calendar: "login", homework: "login", messages: "login", where: "public", compare: "public",
 };
 
-// iPhone (Safari or home-screen app) gets the iOS look: system font, large titles, "Back" text, blurred tab bar.
-// Android (app or browser) gets Material 3 Expressive.
+// Which platform we run on (Android app or browser, iPhone, anything else).
 export const platform = isAndroid || /Android/i.test(navigator.userAgent) ? "android" : isIos() ? "ios" : "web";
+// Phones (Android and iPhone) share the Material 3 Expressive look; desktop/other browsers keep Nocturne.
+export const expressive = platform !== "web";
 
 effect(() => {
   const p = prefs.value;
@@ -62,6 +63,7 @@ effect(() => {
   h.dataset.accent = p.accent;
   h.dataset.density = p.density;
   h.dataset.platform = platform;
+  h.dataset.look = expressive ? "expressive" : "nocturne";
 });
 
 // Status-bar colour to match the Nocturne background (store.ts sets a generic one first).

@@ -1,7 +1,10 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Icon, type IconName } from "./icons";
-import { back, pushCloser } from "./router";
+import { back, pushCloser, route } from "./router";
+import { wide as isWide } from "./layout";
+
+const SIDEBAR = ["/today", "/timetable", "/grades", "/calendar", "/homework", "/messages", "/absence", "/where", "/compare", "/rooms", "/settings", "/customize", "/more"];
 import { t, type TKey } from "../lib/i18n";
 import { online } from "../lib/store";
 import { AuthError } from "../lib/bakalari";
@@ -16,6 +19,8 @@ import { installUpdate, update, updating } from "../lib/update";
 export function Page({ title, sub, backable, actions, children, wide, smallTitle }: {
   title: ComponentChildren; sub?: ComponentChildren; backable?: boolean; actions?: ComponentChildren; children: ComponentChildren; wide?: boolean; smallTitle?: boolean;
 }) {
+  // Desktop: everything in the sidebar is a top-level destination, so no back button there.
+  if (backable && isWide.value && SIDEBAR.includes(route.value.path)) backable = false;
   return (
     <div class={`page ${wide ? "wide" : ""}`}>
       <header class={`topbar ${smallTitle ? "small-title" : ""} ${backable || actions ? "" : "no-nav"}`}>

@@ -12,6 +12,8 @@ import { changeLabel, LessonSheet, TimeRail } from "../ui/timetable";
 import { go } from "../ui/router";
 import { prefs, type CardKey } from "../ui/prefs";
 import { useClassEntries } from "./Calendar";
+import { platform } from "../ui/prefs";
+import { wide } from "../ui/layout";
 
 function useTick(ms: number) {
   const [, set] = useState(0);
@@ -75,13 +77,18 @@ export function Today() {
       <IosInstall dismissible />
       {cur.loading && !cur.data && <Loading />}
       {cur.error != null && <ErrorBox error={cur.error} onRetry={cur.reload} />}
-      {cur.data && <NowCard day={todayDay} tomorrow={nextSchoolDay([cur.data, nxt.data], td)} />}
+      <div class="today-grid">
+        <div class="today-main">
+          {cur.data && <NowCard day={todayDay} tomorrow={nextSchoolDay([cur.data, nxt.data], td)} />}
 
-      {shown && shown !== todayDay && <div class="label" style={{ marginTop: "22px" }}>{cap(fmtRelDay(shown.date!, td))}</div>}
-      {shown?.note && <div class="day-note"><Icon name="info" size={18} />{shown.note}</div>}
-      {shown && <TimeRail day={shown} hw={hw.data} onLesson={(l) => setSel({ l, d: shown })} />}
-
-      {prefs.value.cards.filter((c) => c.on).map((c) => cards[c.k]())}
+          {shown && shown !== todayDay && <div class="label" style={{ marginTop: "22px" }}>{cap(fmtRelDay(shown.date!, td))}</div>}
+          {shown?.note && <div class="day-note"><Icon name="info" size={18} />{shown.note}</div>}
+          {shown && <TimeRail day={shown} hw={hw.data} onLesson={(l) => setSel({ l, d: shown })} />}
+        </div>
+        <div class="today-side">
+          {prefs.value.cards.filter((c) => c.on).map((c) => cards[c.k]())}
+        </div>
+      </div>
       {cur.data && <Updated at={cur.at} loading={cur.loading} onRefresh={() => { cur.reload(); nxt.reload(); }} />}
       <LessonSheet lesson={sel?.l ?? null} day={sel?.d} hw={hw.data} onClose={() => setSel(null)} />
     </Page>
@@ -97,6 +104,35 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
   const nextLine = (p?: (typeof periods)[number]) => p
     ? `${t("next")}: ${name(p.lessons[0])} ${hhmm(p.begin)}–${hhmm(p.end)}${p.lessons[0].room ? ` · ${p.lessons[0].room}` : ""}`
     : "";
+
+  // Material 3 Expressive (Android) and desktop: big card with a countdown badge and wavy progress.
+  const xp = platform === "android" || wide.value;
+  if (xp && (current || upcoming)) {
+    const p = (current ?? upcoming)!;
+    const l = p.lessons[0];
+    const inBreak = !current && periods.some((x) => toMin(x.end) <= nm);
+    const after = current ? periods.find((x) => toMin(x.begin) >= toMin(current.end)) : periods.find((x) => toMin(x.begin) > toMin(p.begin));
+    const mins = current ? toMin(current.end) - nm : toMin(p.begin) - nm;
+    const pct = current ? Math.min(100, ((nm - toMin(current.begin)) / (toMin(current.end) - toMin(current.begin))) * 100) : 0;
+    const kicker = current ? (l.hour ? t("nowKicker", { p: l.hour }) : t("now")) : inBreak ? `${t("breakNow")} · ${t("next")}` : t("firstLesson", { t: hhmm(p.begin) });
+    return (
+      <div class={`now-card xp ${current ? "live" : ""}`}>
+        <div class="xp-top">
+          <div class="grow">
+            <div class="xp-kicker">{kicker}</div>
+            <div class="xp-title">{name(l)}</div>
+            <div class="xp-meta">{[l.room, l.teacherName || l.teacher, l.group].filter(Boolean).join(" · ")}{l.change && <span class="xp-tag">{changeLabel(l.change.kind)}</span>}</div>
+          </div>
+          <div class="xp-count" aria-label={`${mins} ${t("minShort")}`}><b>{mins}</b><small>{current ? t("minShort") : t("untilStart")}</small></div>
+        </div>
+        {current && <div class="wavy" role="progressbar" aria-valuenow={Math.round(pct)}><span style={{ width: `${pct}%` }} /><i /></div>}
+        <div class="xp-times"><span>{hhmm(p.begin)}</span><span>{t("endsShort", { t: hhmm(p.end) })}</span></div>
+        <div class="xp-next"><Icon name="caret-right" size={18} />
+          <span class="grow">{after ? nextLine(after) : t("lastEnds", { t: hhmm(periods[periods.length - 1].end) })}{after ? ` · ${t("lastEnds", { t: hhmm(periods[periods.length - 1].end) })}` : ""}</span>
+        </div>
+      </div>
+    );
+  }
 
   if (current) {
     const l = current.lessons[0];

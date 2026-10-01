@@ -7,7 +7,7 @@ import { patchSettings, settings, user } from "../lib/store";
 import { Icon } from "../ui/icons";
 import { Empty, ErrorBox, Loading, Page, Segmented, Updated, usePullToRefresh } from "../ui/kit";
 import { DayList, LessonSheet, WeekGrid } from "../ui/timetable";
-import { GroupChips, isFav, KIND_ICON, pickedGroups, TargetPicker, toggleFav } from "../ui/picker";
+import { GroupChips, isFav, KIND_ICON, pickedGroups, permanentOf, TargetPicker, toggleFav } from "../ui/picker";
 import { go, isTab, route } from "../ui/router";
 
 export function Timetable() {
@@ -30,7 +30,7 @@ export function Timetable() {
   // A class timetable (or "my" class without a login) can be narrowed to the groups you're in.
   const groupClass = src?.kind === "class" ? src : src?.kind === "my" && !user.value ? settings.value.myTarget : null;
   const picked = pickedGroups(groupClass);
-  const shown = useMemo(() => (week.data ? filterGroups(week.data, picked) : undefined), [week.data, picked.join()]);
+  const shown = useMemo(() => (week.data ? filterGroups(week.data, picked, permanentOf(groupClass)) : undefined), [week.data, picked.join(), permanentOf(groupClass)]);
   const [picker, setPicker] = useState(!src);
   const [sel, setSel] = useState<{ l: Lesson; d: Day } | null>(null);
   const view = settings.value.view;
@@ -103,7 +103,7 @@ export function Timetable() {
         </div>
       )}
 
-      {groupClass?.kind === "class" && <GroupChips classId={groupClass.id} week={week.data} />}
+      {groupClass?.kind === "class" && <GroupChips cls={groupClass} week={week.data} />}
 
       {!src && <Empty icon="calendar-blank" text={t("searchTarget")}><button class="btn" onClick={() => setPicker(true)}>{t("search")}</button></Empty>}
       {src && week.loading && !week.data && <Loading />}

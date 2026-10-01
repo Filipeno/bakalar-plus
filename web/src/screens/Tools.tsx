@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { Day, Hour, Lesson, Target, Term, Week } from "../lib/model";
-import { dayFor, dowOf, filterGroups, hhmm, liveLessons, nowMin, targetKey, toMin, today } from "../lib/model";
+import { dayFor, dowOf, filterGroups, hhmm, liveLessons, nowMin, targetKey, toMin, today, usualRoom } from "../lib/model";
 import { dayShort, fmtDate, t } from "../lib/i18n";
-import { loadWeek, useCabinets, useDirectory, weekCacheKey } from "../lib/data";
+import { loadWeek, useCabinets, useDirectory, useWeek, weekCacheKey } from "../lib/data";
 import { patchSettings, readCache, settings, user, writeCache } from "../lib/store";
 import { setCabinet } from "../lib/cloud";
 import { Icon } from "../ui/icons";
 import { Empty, ErrorBox, Page, Segmented, Sheet, Spinner, errorText } from "../ui/kit";
-import { GroupChips, KIND_ICON, pickedGroups, TargetPicker } from "../ui/picker";
+import { GroupChips, KIND_ICON, pickedGroups, permanentOf, TargetPicker } from "../ui/picker";
 import { LessonSheet } from "../ui/timetable";
 import { go, isTab } from "../ui/router";
 
@@ -183,12 +183,15 @@ export function WhereNow() {
   const tg = targets.find((x) => targetKey(x) === who) ?? targets[0];
   const raw = tg ? weeks.get(targetKey(tg)) : undefined;
   const picked = pickedGroups(tg);
-  const w = useMemo(() => raw && filterGroups(raw, picked), [raw, picked.join()]);
+  const w = useMemo(() => raw && filterGroups(raw, picked, permanentOf(tg)), [raw, picked.join(), permanentOf(tg)]);
   const { now: nowAll, next } = statusAt(w, td, min);
   const now = nowAll[0];
   const cabs = useCabinets();
   const [editCab, setEditCab] = useState(false);
   const cab = tg?.kind === "teacher" ? cabs.data?.[tg.id] : undefined;
+  // Where a teacher usually is: their most used room over the whole permanent timetable.
+  const perm = useWeek(tg?.kind === "teacher" ? tg : null, "permanent").data;
+  const usual = useMemo(() => usualRoom(perm ?? raw), [perm, raw]);
   const hr = hours.find((h) => min >= toMin(h.begin) && min < toMin(h.end));
   const kicker = when === "now" ? (hr ? t("rightNowPeriod", { p: hr.caption }) : t("rightNow")) : t("atPeriod", { p: hr?.caption ?? "", t: hhmm(when) });
 
@@ -234,6 +237,7 @@ export function WhereNow() {
               {next && <div class="detail">{t("nextRoomAt", { r: next.room || "—", t: hhmm(next.begin) })}</div>}
             </>
           )}
+          {tg.kind === "teacher" && usual && !cab && <div class="detail" style={{ marginTop: "8px" }}>{t("usualRoom", { r: usual })}</div>}
           {tg.kind === "teacher" && user.value && cabs.data && (
             <button class="where-cab" onClick={() => setEditCab(true)}>
               <Icon name="door" size={16} />
@@ -248,7 +252,7 @@ export function WhereNow() {
           </div>
         </div>
       )}
-      {tg?.kind === "class" && <div style={{ marginTop: "12px" }}><GroupChips classId={tg.id} week={raw} /></div>}
+      {tg?.kind === "class" && <div style={{ marginTop: "12px" }}><GroupChips cls={tg} week={raw} /></div>}
       {tg?.kind === "teacher" && (
         <CabinetSheet open={editCab} teacher={tg} room={cab?.room ?? ""} onClose={() => setEditCab(false)}
           onSaved={(room) => {

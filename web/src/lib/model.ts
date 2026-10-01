@@ -90,33 +90,74 @@ export function byPeriod(day: Day): { key: string; begin: string; end: string; h
 
 // ---------- class groups (a class split for some subjects: AJ_1 / AJ_2, 1K / 2K...) ----------
 
-export const lessonGroups = (l: Lesson) => l.group.split(/\s*,\s*/).filter(Boolean);
+/** "AJ_1, NJ_2 · lichý týden" -> ["AJ_1", "NJ_2"] (the logged-in timetable appends the week cycle). */
+export const lessonGroups = (l: Lesson) => l.group.split(" · ")[0].split(/\s*,\s*/).filter(Boolean);
+
+export interface GroupFamily { groups: string[]; subjects: string[] }
 
 /**
- * The groups of a class timetable, as sets of alternatives (you're in one group of each set): groups that differ
- * only in their number, like AJ_1 / AJ_2 or 1K / 2K. (Groups taught at the same time aren't always alternatives:
- * half the class can have AJ_1 while the other half has 2K.)
+ * How a class is split: sets of alternative groups (you're in exactly one group of each set), each with the
+ * subjects taught in it. Read from the timetable itself, so it fits any class and any number of groups:
+ * - groups that differ only in their number are one set: AJ_1 / AJ_2 / AJ_3, 1K / 2K;
+ * - other groups taught at the same time are one set too (NJ / RJ), unless they already belong to a numbered set:
+ *   half the class can have AJ_1 while the other half has 2K, and that doesn't make AJ and K one choice.
  */
-export function groupFamilies(week: Week | undefined): string[][] {
-  const fams = new Map<string, Set<string>>();
+export function groupFamilies(week: Week | undefined): GroupFamily[] {
+  const parent = new Map<string, string>();
+  const find = (g: string): string => { const p = parent.get(g) ?? g; return p === g ? g : find(p); };
+  const join = (a: string, b: string) => { const x = find(a), y = find(b); if (x !== y) parent.set(x, y); };
+  const subjects = new Map<string, Map<string, number>>();
+  const byStem = new Map<string, string[]>();
+  const slots: string[][] = [];
   for (const d of week?.days ?? []) {
+    const at = new Map<string, Set<string>>();
     for (const l of d.lessons) {
       for (const g of lessonGroups(l)) {
-        const stem = g.replace(/[\d_\s.-]+/g, "").toLowerCase();
-        if (stem) fams.set(stem, (fams.get(stem) ?? new Set()).add(g));
+        if (!parent.has(g)) parent.set(g, g);
+        const stem = g.replace(/[\d_\s.-]+/g, "").toLowerCase() || g;
+        const sib = byStem.get(stem) ?? [];
+        if (!sib.includes(g)) byStem.set(stem, [...sib, g]);
+        if (!at.has(l.begin)) at.set(l.begin, new Set());
+        at.get(l.begin)!.add(g);
+        const name = l.subjectName || l.subject;
+        if (name) { const m = subjects.get(g) ?? new Map(); m.set(name, (m.get(name) ?? 0) + 1); subjects.set(g, m); }
       }
     }
+    slots.push(...[...at.values()].map((s) => [...s]));
   }
+  for (const sib of byStem.values()) for (const g of sib.slice(1)) join(g, sib[0]);
+  const numbered = new Set([...byStem.values()].filter((s) => s.length > 1).flat());
+  for (const slot of slots) {
+    const loose = slot.filter((g) => !numbered.has(g));
+    for (const g of loose.slice(1)) join(g, loose[0]);
+  }
+  const fams = new Map<string, string[]>();
+  for (const g of parent.keys()) { const r = find(g); fams.set(r, [...(fams.get(r) ?? []), g]); }
   const cmp = (a: string, b: string) => a.localeCompare(b, "cs", { numeric: true });
-  return [...fams.values()].filter((f) => f.size > 1).map((f) => [...f].sort(cmp)).sort((a, b) => cmp(a[0], b[0]));
+  return [...fams.values()].filter((f) => f.length > 1).map((f) => {
+    const count = new Map<string, number>();
+    for (const g of f) for (const [n, c] of subjects.get(g) ?? []) count.set(n, (count.get(n) ?? 0) + c);
+    return { groups: f.sort(cmp), subjects: [...count.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n) };
+  }).sort((a, b) => cmp(a.subjects[0] ?? a.groups[0], b.subjects[0] ?? b.groups[0]));
 }
 
-/** Drop the lessons of the other groups in every set where one group is picked. */
-export function filterGroups(week: Week, picked: string[]): Week {
+/** Two timetables as one, for reading the class's groups (this week alone may miss a split). */
+export const mergeWeeks = (a: Week | undefined, b: Week | undefined): Week | undefined =>
+  a && b ? { ...a, days: [...a.days, ...b.days] } : a ?? b;
+
+/** Drop the lessons of the other groups in every set where one group is picked. `also`: the permanent timetable. */
+export function filterGroups(week: Week, picked: string[], also?: Week): Week {
   if (!picked.length) return week;
-  const fams = groupFamilies(week).filter((f) => f.some((g) => picked.includes(g)));
-  const hidden = new Set(fams.flat().filter((g) => !picked.includes(g)));
+  const fams = groupFamilies(mergeWeeks(week, also)).filter((f) => f.groups.some((g) => picked.includes(g)));
+  const hidden = new Set(fams.flatMap((f) => f.groups).filter((g) => !picked.includes(g)));
   if (!hidden.size) return week;
   const keep = (l: Lesson) => { const gs = lessonGroups(l); return !gs.length || gs.some((g) => !hidden.has(g)); };
   return { ...week, days: week.days.map((d) => ({ ...d, lessons: d.lessons.filter(keep) })) };
+}
+
+/** The room a teacher (or class) is in most often: a hint where to look for them between lessons. */
+export function usualRoom(week: Week | undefined): string | undefined {
+  const count = new Map<string, number>();
+  for (const d of week?.days ?? []) for (const l of liveLessons(d)) if (l.room) count.set(l.room, (count.get(l.room) ?? 0) + 1);
+  return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 }

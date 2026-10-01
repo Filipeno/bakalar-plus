@@ -1,9 +1,9 @@
 import { useMemo, useState } from "preact/hooks";
 import type { Target, TargetKind, Week } from "../lib/model";
-import { groupFamilies, targetKey } from "../lib/model";
+import { groupFamilies, lessonGroups, mergeWeeks, targetKey } from "../lib/model";
 import { t } from "../lib/i18n";
-import { useDirectory } from "../lib/data";
-import { patchSettings, settings, user } from "../lib/store";
+import { useDirectory, useWeek, weekCacheKey } from "../lib/data";
+import { patchSettings, readCache, settings, user } from "../lib/store";
 import { fold } from "../lib/schools";
 import { Icon, type IconName } from "./icons";
 import { ErrorBox, Loading, Segmented, Sheet } from "./kit";
@@ -81,26 +81,68 @@ export function TargetPicker({ open, onClose, onPick, allowMy, kinds = ["class",
 }
 
 /** The groups a class is split into for some subjects. One pick per set (AJ_1 or AJ_2), remembered per class. */
-export function GroupChips({ classId, week }: { classId: string; week?: Week }) {
-  const fams = useMemo(() => groupFamilies(week), [week]);
+export function GroupChips({ cls, week }: { cls: Target; week?: Week }) {
+  const perm = useWeek(cls, "permanent").data;
+  const fams = useMemo(() => groupFamilies(mergeWeeks(week, perm)), [week, perm]);
+  const [open, setOpen] = useState(false);
   if (!fams.length) return null;
-  const picked = settings.value.groups[classId] ?? [];
+  const picked = pickedGroups(cls);
+  const auto = !settings.value.groups[cls.id] && picked.length > 0;
   const toggle = (fam: string[], g: string) => {
     const rest = picked.filter((x) => !fam.includes(x));
-    patchSettings({ groups: { ...settings.value.groups, [classId]: picked.includes(g) ? rest : [...rest, g] } });
+    patchSettings({ groups: { ...settings.value.groups, [cls.id]: picked.includes(g) ? rest : [...rest, g] } });
   };
+  const chosen = fams.filter((f) => f.groups.some((g) => picked.includes(g))).length;
   return (
-    <div class="chips scroll group-chips" aria-label={t("groups")}>
-      <span class="group-label">{t("groups")}</span>
-      {fams.map((f, i) => (
-        <>
-          {i > 0 && <span class="chip-sep" />}
-          {f.map((g) => <button class={`chip ${picked.includes(g) ? "on" : ""}`} onClick={() => toggle(f, g)}>{g}</button>)}
-        </>
-      ))}
+    <div class="group-box">
+      <button class="group-head" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <Icon name="users-three" size={18} />
+        <span class="grow">
+          <b>{t("groupsOf", { n: fams.length })}</b>
+          <small>{picked.length ? `${picked.join(", ")}${auto ? ` · ${t("groupsAuto")}` : ""}` : t("groupsNone")}</small>
+        </span>
+        <span class="group-count">{chosen}/{fams.length}</span>
+        <Icon name={open ? "caret-down" : "caret-right"} size={16} />
+      </button>
+      {open && (
+        <div class="group-list">
+          <p class="hint">{t("groupsHint")}</p>
+          {fams.map((f) => (
+            <div class="group-row">
+              <span class="group-subj">{f.subjects.slice(0, 2).join(", ") || t("group")}</span>
+              <div class="chips">
+                {f.groups.map((g) => <button class={`chip ${picked.includes(g) ? "on" : ""}`} onClick={() => toggle(f.groups, g)}>{g}</button>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-export const pickedGroups = (tg: Pick<Target, "kind" | "id"> | null | undefined) =>
-  tg?.kind === "class" ? settings.value.groups[tg.id] ?? [] : [];
+/** The class's permanent timetable, if it was loaded (GroupChips loads it): it shows every split of the class. */
+export const permanentOf = (tg: Pick<Target, "kind" | "id"> | null | undefined) =>
+  tg?.kind === "class" ? readCache<Week>(weekCacheKey(tg as Target, "permanent"))?.v : undefined;
+
+/** Your own class when signed in: the groups in your personal timetable (it only lists your own lessons). */
+function myGroups(): string[] {
+  if (!user.value) return [];
+  const gs = new Set<string>();
+  for (const term of ["permanent", "actual"] as const) {
+    for (const d of readCache<Week>(weekCacheKey({ kind: "my" }, term))?.v.days ?? []) for (const l of d.lessons) lessonGroups(l).forEach((g) => gs.add(g));
+  }
+  return [...gs];
+}
+
+/** The groups picked for a class; for your own class (signed in) they come from your timetable until you change them. */
+export function pickedGroups(tg: Pick<Target, "kind" | "id"> & { name?: string } | null | undefined): string[] {
+  if (tg?.kind !== "class") return [];
+  const saved = settings.value.groups[tg.id];
+  if (saved) return saved;
+  const u = user.value;
+  if (!u || !tg.name || tg.name.trim().toLowerCase() !== u.classAbbrev.trim().toLowerCase()) return [];
+  const week = mergeWeeks(permanentOf(tg), readCache<Week>(weekCacheKey(tg as Target, "actual"))?.v);
+  const all = new Set(groupFamilies(week).flatMap((f) => f.groups));
+  return myGroups().filter((g) => all.has(g));
+}

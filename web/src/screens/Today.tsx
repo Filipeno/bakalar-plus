@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { Day, Lesson, Week } from "../lib/model";
 import { addDays, addSchoolDays, byPeriod, dayFor, filterGroups, hhmm, liveLessons, nowMin, toMin, today } from "../lib/model";
-import { pickedGroups } from "../ui/picker";
+import { pickedGroups, permanentOf } from "../ui/picker";
 import { cap, fmtDate, fmtRelDay, t } from "../lib/i18n";
 import { useEvents, useHomework, useMarks, useWeek } from "../lib/data";
 import type { Homework } from "../lib/bakalari";
@@ -37,8 +37,8 @@ export function Today() {
   const nxtRaw = useWeek(hasMy ? my : null, "next");
   // Without a login "my" is a whole class: keep only the groups picked in its timetable.
   const picked = pickedGroups(user.value ? null : settings.value.myTarget).join();
-  const cur = useMemo(() => ({ ...curRaw, data: curRaw.data && filterGroups(curRaw.data, picked ? picked.split(",") : []) }), [curRaw, picked]);
-  const nxt = useMemo(() => ({ ...nxtRaw, data: nxtRaw.data && filterGroups(nxtRaw.data, picked ? picked.split(",") : []) }), [nxtRaw, picked]);
+  const cur = useMemo(() => ({ ...curRaw, data: curRaw.data && filterGroups(curRaw.data, picked ? picked.split(",") : [], permanentOf(settings.value.myTarget)) }), [curRaw, picked]);
+  const nxt = useMemo(() => ({ ...nxtRaw, data: nxtRaw.data && filterGroups(nxtRaw.data, picked ? picked.split(",") : [], permanentOf(settings.value.myTarget)) }), [nxtRaw, picked]);
   const hw = useHomework();
   const [sel, setSel] = useState<{ l: Lesson; d: Day } | null>(null);
   usePullToRefresh(() => { cur.reload(); nxt.reload(); });

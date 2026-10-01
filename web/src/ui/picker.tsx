@@ -143,6 +143,7 @@ export function pickedGroups(tg: Pick<Target, "kind" | "id"> & { name?: string }
   const u = user.value;
   if (!u || !tg.name || tg.name.trim().toLowerCase() !== u.classAbbrev.trim().toLowerCase()) return [];
   const week = mergeWeeks(permanentOf(tg), readCache<Week>(weekCacheKey(tg as Target, "actual"))?.v);
-  const all = new Set(groupFamilies(week).flatMap((f) => f.groups));
-  return myGroups().filter((g) => all.has(g));
+  // Only splits where your timetable shows exactly one of the groups (two would mean it isn't your own).
+  const mine = new Set(myGroups());
+  return groupFamilies(week).map((f) => f.groups.filter((g) => mine.has(g))).filter((gs) => gs.length === 1).flat();
 }

@@ -161,6 +161,12 @@ function ToolTabs({ on }: { on: "where" | "rooms" }) {
 }
 
 /** What's on at `min`: every lesson of that period (a split class has one per group), and the next one. */
+/** "3.A · AJ_1 · 2P", or "3.A · 5 skupin" when more are picked, so the chip stays short. */
+function groupLabel(x: Target) {
+  const gs = pickedGroups(x);
+  return gs.length > 2 ? `${x.name} · ${t(gs.length < 5 ? "groupsFew" : "groupsN", { n: gs.length })}` : [x.name, ...gs].join(" · ");
+}
+
 function statusAt(week: Week | undefined, iso: string, min: number): { now: Lesson[]; next?: Lesson } {
   const d = dayFor(week, iso);
   if (!d || d.off) return { now: [] };
@@ -202,7 +208,7 @@ export function WhereNow() {
       <div class="chips">
         {targets.map((x) => (
           <button class={`chip ${tg && targetKey(tg) === targetKey(x) ? "on" : ""}`} onClick={() => setWho(targetKey(x))}>
-            <Icon name={KIND_ICON[x.kind]} size={14} />{[x.name, ...pickedGroups(x)].join(" · ")}
+            <Icon name={KIND_ICON[x.kind]} size={14} />{groupLabel(x)}
           </button>
         ))}
         <button class="chip" onClick={() => setPicker(true)}><Icon name="magnifying-glass" size={14} />{t("search")}</button>

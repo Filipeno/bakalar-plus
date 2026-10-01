@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { Day, Lesson, Week } from "../lib/model";
-import { addDays, byPeriod, dayFor, hhmm, liveLessons, nowMin, toMin, today } from "../lib/model";
+import { addDays, addSchoolDays, byPeriod, dayFor, hhmm, liveLessons, nowMin, toMin, today } from "../lib/model";
 import { cap, fmtDate, fmtRelDay, t } from "../lib/i18n";
 import { useEvents, useHomework, useMarks, useWeek } from "../lib/data";
 import type { Homework } from "../lib/bakalari";
@@ -167,7 +167,7 @@ function Changes({ weeks, onLesson }: { weeks: (Week | undefined)[]; onLesson: (
 
 function DueSoon({ hw }: { hw?: Homework[] }) {
   const td = today();
-  const soon = (hw ?? []).filter((h) => !h.done && !h.closed && h.due >= td && h.due <= addDays(td, 3)).sort((a, b) => a.due.localeCompare(b.due));
+  const soon = (hw ?? []).filter((h) => !h.done && !h.closed && h.due >= td && h.due <= addSchoolDays(td, 3)).sort((a, b) => a.due.localeCompare(b.due));
   if (!soon.length) return null;
   return (
     <Section title={t("dueSoon")} action={<SectionLink label={t("homework")} onClick={() => go("/homework")} />}>

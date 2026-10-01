@@ -12,7 +12,7 @@ import { changeLabel, LessonSheet, TimeRail } from "../ui/timetable";
 import { go } from "../ui/router";
 import { prefs, type CardKey } from "../ui/prefs";
 import { useClassEntries } from "./Calendar";
-import { platform } from "../ui/prefs";
+import { expressive } from "../ui/prefs";
 import { wide } from "../ui/layout";
 
 function useTick(ms: number) {
@@ -105,8 +105,8 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
     ? `${t("next")}: ${name(p.lessons[0])} ${hhmm(p.begin)}–${hhmm(p.end)}${p.lessons[0].room ? ` · ${p.lessons[0].room}` : ""}`
     : "";
 
-  // Material 3 Expressive (Android) and desktop: big card with a countdown badge and wavy progress.
-  const xp = platform === "android" || wide.value;
+  // Material 3 Expressive (phones) and desktop: big card with a countdown badge and wavy progress.
+  const xp = expressive || wide.value;
   if (xp && (current || upcoming)) {
     const p = (current ?? upcoming)!;
     const l = p.lessons[0];

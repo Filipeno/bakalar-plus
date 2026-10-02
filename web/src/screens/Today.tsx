@@ -30,8 +30,11 @@ function useTick(ms: number) {
 
 /** Seconds since midnight, now; the countdown re-renders every second with useTick(1000). */
 const nowSec = () => { const d = new Date(); return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds(); };
-/** 942 s -> "15:42"; an hour or more -> "1:05:00" is too long for the badge, so whole minutes ("65"). */
-const clock = (s: number) => (s >= 3600 ? String(Math.ceil(s / 60)) : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
+/** Seconds show only in the last 5 minutes ("4:07"); before that whole minutes, rounded up ("16"). */
+const SECS_FROM = 5 * 60;
+const clock = (s: number) => (s > SECS_FROM ? String(Math.ceil(s / 60)) : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
+/** Before school the countdown to the first lesson starts an hour ahead; earlier it just says when school starts. */
+const COUNT_BEFORE = 3600;
 
 /** Next school day (with lessons) after `iso` within the loaded weeks. */
 function nextSchoolDay(weeks: (Week | undefined)[], iso: string): Day | undefined {
@@ -143,9 +146,18 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
             <div class="xp-title">{name(l)}</div>
             <div class="xp-meta">{[l.room, l.teacherName || l.teacher, l.group].filter(Boolean).join(" · ")}{l.change && <span class="xp-tag">{changeLabel(l.change.kind)}</span>}</div>
           </div>
-          <div class="xp-count" aria-label={`${mins} ${t("minShort")}`}>
-            <b class={secs < 3600 ? "secs" : ""}>{clock(secs)}</b><small>{current ? t("leftShort") : t("untilStart")}</small>
-          </div>
+          {/* More than an hour before school the badge shows the start time instead of counting down.
+              (It always stays in the DOM: removing it from this flex row crashed Chromium's renderer in testing.) */}
+          {current || inBreak || secs <= COUNT_BEFORE ? (
+            <div class="xp-count" aria-label={`${mins} ${t("minShort")}`}>
+              <b class={secs <= SECS_FROM ? "secs" : ""}>{clock(secs)}</b>
+              <small>{secs <= SECS_FROM ? (current ? t("leftShort") : t("untilStart")) : current ? t("minShort") : t("minToStart")}</small>
+            </div>
+          ) : (
+            <div class="xp-count" aria-label={t("firstLesson", { t: hhmm(p.begin) })}>
+              <b class="secs">{hhmm(p.begin)}</b><small>{t("startShort")}</small>
+            </div>
+          )}
         </div>
         {current && <div class="wavy" role="progressbar" aria-valuenow={Math.round(pct)}><span style={{ width: `${pct}%` }} /><i /></div>}
         <div class="xp-times"><span>{hhmm(p.begin)}</span><span>{t("endsShort", { t: hhmm(p.end) })}</span></div>
@@ -165,7 +177,7 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
       <div class="now-card">
         <div class="now-top">
           <span class="now-title">{name(l)}{l.room ? ` · ${l.room}` : ""}{l.change && <span class="tag">{changeLabel(l.change.kind)}</span>}</span>
-          <span class="now-end">{t("endsAtInClock", { t: hhmm(current.end), c: clock(Math.max(0, toMin(current.end) * 60 - ns)) })}</span>
+          <span class="now-end">{(() => { const s = Math.max(0, toMin(current.end) * 60 - ns); return s <= SECS_FROM ? t("endsAtInClock", { t: hhmm(current.end), c: clock(s) }) : t("endsAtIn", { t: hhmm(current.end), m: Math.ceil(s / 60) }); })()}</span>
         </div>
         <div class="progress"><span style={{ width: `${pct}%` }} /></div>
         <div class="now-next">{after ? nextLine(after) : t("lastEnds", { t: hhmm(current.end) })}</div>
@@ -180,7 +192,8 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
       <div class="now-card">
         <div class="now-top">
           <span class="now-title">{inBreak ? `${t("breakNow")} · ${name(l)}` : t("firstLesson", { t: hhmm(upcoming.begin) })}{l.change && <span class="tag">{changeLabel(l.change.kind)}</span>}</span>
-          <span class="now-end">{inBreak ? t("startsAtIn", { t: hhmm(upcoming.begin), m: toMin(upcoming.begin) - nm }) : t("startsIn", { m: toMin(upcoming.begin) - nm })}</span>
+          <span class="now-end">{inBreak ? t("startsAtIn", { t: hhmm(upcoming.begin), m: toMin(upcoming.begin) - nm })
+            : toMin(upcoming.begin) * 60 - ns <= COUNT_BEFORE ? t("startsIn", { m: Math.ceil((toMin(upcoming.begin) * 60 - ns) / 60) }) : t("at", { t: hhmm(upcoming.begin) })}</span>
         </div>
         <div class="now-next">
           {inBreak

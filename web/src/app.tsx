@@ -15,6 +15,7 @@ import { Compare, FreeRooms, Teachers, WhereNow } from "./screens/Tools";
 import { Extras } from "./screens/Extras";
 import { Canteen } from "./screens/Canteen";
 import { UpdatePrompt } from "./ui/update-prompt";
+import { TabSwipe } from "./ui/swipe";
 import { Customize, Login, Settings, Welcome } from "./screens/Setup";
 import { wide } from "./ui/layout";
 import { useMessages } from "./lib/data";
@@ -67,6 +68,7 @@ export function App() {
       )}
       <Screen key={path} />
       <UpdatePrompt />
+      <TabSwipe paths={nav.map((x) => x.path)} current={path} />
       {showTabs && (
         <nav class="tabbar">
           <div class="tabbar-in">

@@ -58,7 +58,8 @@ export function Timetable() {
     if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
     const i = days.findIndex((d) => d.dow === dow);
     const next = days[i + (dx < 0 ? 1 : -1)];
-    if (next) setDow(next.dow);
+    // Used for a day change: the tab swipe (ui/swipe.tsx) leaves it alone. At the first / last day it moves tabs.
+    if (next) { setDow(next.dow); (e as TouchEvent & { bpSwiped?: boolean }).bpSwiped = true; }
   };
 
   const myName = user.value ? t("my") : settings.value.myTarget?.name ?? t("my");

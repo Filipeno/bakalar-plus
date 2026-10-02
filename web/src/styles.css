@@ -581,6 +581,7 @@ a.row { color: inherit; text-decoration: none; }
 .xp-count { position: relative; isolation: isolate; width: 92px; height: 92px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--on-pri); line-height: 1; }
 .xp-count::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--pri); -webkit-mask: var(--shape-cookie) center / contain no-repeat; mask: var(--shape-cookie) center / contain no-repeat; animation: spin 24s linear infinite; }
 .xp-count b { font-size: 30px; font-weight: 600; letter-spacing: -.02em; }
+.xp-count b.secs { font-size: 25px; font-variant-numeric: tabular-nums; }
 .xp-count small { font-size: 12px; font-weight: 500; margin-top: 2px; max-width: 70px; text-align: center; }
 .wavy { position: relative; height: 10px; }
 .wavy::before { content: ""; position: absolute; left: 0; right: 0; top: 3px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--on-pc) 22%, transparent); }

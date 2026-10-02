@@ -16,10 +16,22 @@ import { useClassEntries } from "./Calendar";
 import { expressive } from "../ui/prefs";
 import { wide } from "../ui/layout";
 
+/** Re-renders every `ms`, and at once when the app comes back to the screen (timers sleep in the background). */
 function useTick(ms: number) {
   const [, set] = useState(0);
-  useEffect(() => { const id = setInterval(() => set((x) => x + 1), ms); return () => clearInterval(id); }, [ms]);
+  useEffect(() => {
+    const bump = () => { if (document.visibilityState === "visible") set((x) => x + 1); };
+    const id = setInterval(bump, ms);
+    document.addEventListener("visibilitychange", bump);
+    addEventListener("focus", bump);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", bump); removeEventListener("focus", bump); };
+  }, [ms]);
 }
+
+/** Seconds since midnight, now; the countdown re-renders every second with useTick(1000). */
+const nowSec = () => { const d = new Date(); return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds(); };
+/** 942 s -> "15:42"; an hour or more -> "1:05:00" is too long for the badge, so whole minutes ("65"). */
+const clock = (s: number) => (s >= 3600 ? String(Math.ceil(s / 60)) : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
 
 /** Next school day (with lessons) after `iso` within the loaded weeks. */
 function nextSchoolDay(weeks: (Week | undefined)[], iso: string): Day | undefined {
@@ -101,7 +113,9 @@ export function Today() {
 }
 
 function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
-  const nm = nowMin();
+  useTick(1000);   // live countdown
+  const ns = nowSec();
+  const nm = Math.floor(ns / 60);
   const periods = day && !day.off ? byPeriod({ ...day, lessons: liveLessons(day) }) : [];
   const current = periods.find((p) => nm >= toMin(p.begin) && nm < toMin(p.end));
   const upcoming = periods.find((p) => toMin(p.begin) > nm);
@@ -117,8 +131,9 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
     const l = p.lessons[0];
     const inBreak = !current && periods.some((x) => toMin(x.end) <= nm);
     const after = current ? periods.find((x) => toMin(x.begin) >= toMin(current.end)) : periods.find((x) => toMin(x.begin) > toMin(p.begin));
-    const mins = current ? toMin(current.end) - nm : toMin(p.begin) - nm;
-    const pct = current ? Math.min(100, ((nm - toMin(current.begin)) / (toMin(current.end) - toMin(current.begin))) * 100) : 0;
+    const secs = Math.max(0, (current ? toMin(current.end) : toMin(p.begin)) * 60 - ns);
+    const mins = Math.ceil(secs / 60);
+    const pct = current ? Math.min(100, ((ns - toMin(current.begin) * 60) / ((toMin(current.end) - toMin(current.begin)) * 60)) * 100) : 0;
     const kicker = current ? (l.hour ? t("nowKicker", { p: l.hour }) : t("now")) : inBreak ? `${t("breakNow")} · ${t("next")}` : t("firstLesson", { t: hhmm(p.begin) });
     return (
       <div class={`now-card xp ${current ? "live" : ""}`}>
@@ -128,7 +143,9 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
             <div class="xp-title">{name(l)}</div>
             <div class="xp-meta">{[l.room, l.teacherName || l.teacher, l.group].filter(Boolean).join(" · ")}{l.change && <span class="xp-tag">{changeLabel(l.change.kind)}</span>}</div>
           </div>
-          <div class="xp-count" aria-label={`${mins} ${t("minShort")}`}><b>{mins}</b><small>{current ? t("minShort") : t("untilStart")}</small></div>
+          <div class="xp-count" aria-label={`${mins} ${t("minShort")}`}>
+            <b class={secs < 3600 ? "secs" : ""}>{clock(secs)}</b><small>{current ? t("leftShort") : t("untilStart")}</small>
+          </div>
         </div>
         {current && <div class="wavy" role="progressbar" aria-valuenow={Math.round(pct)}><span style={{ width: `${pct}%` }} /><i /></div>}
         <div class="xp-times"><span>{hhmm(p.begin)}</span><span>{t("endsShort", { t: hhmm(p.end) })}</span></div>
@@ -142,13 +159,13 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
   if (current) {
     const l = current.lessons[0];
     const total = toMin(current.end) - toMin(current.begin);
-    const pct = Math.min(100, ((nm - toMin(current.begin)) / total) * 100);
+    const pct = Math.min(100, ((ns - toMin(current.begin) * 60) / (total * 60)) * 100);
     const after = periods.find((p) => toMin(p.begin) >= toMin(current.end));
     return (
       <div class="now-card">
         <div class="now-top">
           <span class="now-title">{name(l)}{l.room ? ` · ${l.room}` : ""}{l.change && <span class="tag">{changeLabel(l.change.kind)}</span>}</span>
-          <span class="now-end">{t("endsAtIn", { t: hhmm(current.end), m: toMin(current.end) - nm })}</span>
+          <span class="now-end">{t("endsAtInClock", { t: hhmm(current.end), c: clock(Math.max(0, toMin(current.end) * 60 - ns)) })}</span>
         </div>
         <div class="progress"><span style={{ width: `${pct}%` }} /></div>
         <div class="now-next">{after ? nextLine(after) : t("lastEnds", { t: hhmm(current.end) })}</div>

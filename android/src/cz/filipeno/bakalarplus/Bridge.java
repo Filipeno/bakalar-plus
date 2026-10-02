@@ -59,6 +59,16 @@ final class Bridge {
             case "logout":
                 Baka.logout(act);
                 return "null";
+            case "secretPut":    // the canteen password: encrypted with the Android Keystore, never leaves the phone
+                Store.prefs(act).edit().putString("secret_" + a.getString("key"), Store.encrypt(a.getString("value"))).apply();
+                return "null";
+            case "secretGet": {
+                String v = Store.prefs(act).getString("secret_" + a.getString("key"), null);
+                return v == null ? "null" : JSONObject.quote(Store.decrypt(v));
+            }
+            case "secretDel":
+                Store.prefs(act).edit().remove("secret_" + a.getString("key")).apply();
+                return "null";
             case "updateCheck":
                 return Updater.check(act).toString();
             case "updateInstall":

@@ -2,13 +2,15 @@
 // ("burza"). iCanteen has no API, so this reads its web pages. Page structure and flows follow Autojídelna's
 // icanteenlib (MIT, github.com/Autojidelna/icanteenlib), written for iCanteen 2.18.03.
 //
-// Separate login from Bakaláři. The password goes to the canteen once (directly from Android, through the Worker's
-// /canteen relay in a browser) and is never stored; the session and iCanteen's "remember me" cookie are kept on
-// this device only (localStorage "bp.canteen").
+// Separate login from Bakaláři. The password goes to the canteen (directly from Android, through the Worker's
+// /canteen relay in a browser). If the user lets the app remember it, it is kept encrypted on this device only
+// (secrets.ts) so the app can sign in again when iCanteen drops the session; it never reaches the Bakaláři+ server.
+// The session cookies stay on the device too (localStorage "bp.canteen").
 
 import { signal } from "@preact/signals";
 import { native } from "./native";
 import { CLOUD_URL, NetError } from "./net";
+import { secretDel, secretGet, secretPut } from "./secrets";
 
 export interface CanteenState { url: string; cookies: Record<string, string>; loggedIn: boolean; user?: string }
 
@@ -81,7 +83,7 @@ function page(path: string, expect: RegExp): Promise<string> {
   return run;
 }
 
-async function pageNow(path: string, expect: RegExp): Promise<string> {
+async function pageNow(path: string, expect: RegExp, retried = false): Promise<string> {
   const s = canteen.value;
   if (!s?.loggedIn) throw new CanteenAuthError();
   const jar = { ...s.cookies };
@@ -94,6 +96,15 @@ async function pageNow(path: string, expect: RegExp): Promise<string> {
   }
   if (isLoginPage(r) || (r.status >= 300 && r.status < 400) || (r.status === 200 && !expect.test(r.text))) {
     save({ ...s, cookies: jar, loggedIn: false });
+    // Signed out by the canteen: sign in again with the remembered password, once, then retry the page.
+    if (!retried && s.user) {
+      const pw = await secretGet(PW);
+      if (pw) {
+        const ok = await signIn(s.url, s.user, pw).catch(() => null);
+        if (ok) return pageNow(path, expect, true);
+        if (ok === false) await secretDel(PW);   // the password was changed
+      }
+    }
     throw new CanteenAuthError();
   }
   save({ ...s, cookies: jar });
@@ -103,8 +114,17 @@ async function pageNow(path: string, expect: RegExp): Promise<string> {
 
 // ---------------- login ----------------
 
-/** Returns false for a wrong name or password. */
-export async function canteenLogin(url: string, user: string, password: string): Promise<boolean> {
+const PW = "canteen-password";
+
+/** Returns false for a wrong name or password. `remember`: keep the password (encrypted, on this device only). */
+export async function canteenLogin(url: string, user: string, password: string, remember = true): Promise<boolean> {
+  const ok = await signIn(url, user, password);
+  if (ok && remember) await secretPut(PW, password).catch(() => {});
+  if (ok && !remember) await secretDel(PW);
+  return ok;
+}
+
+async function signIn(url: string, user: string, password: string): Promise<boolean> {
   const base = cleanUrl(url);
   const jar: Record<string, string> = {};
   const first = await raw(`${base}/login`, "GET", undefined, jar);
@@ -125,6 +145,7 @@ export async function canteenLogin(url: string, user: string, password: string):
 
 export function canteenLogout() {
   const s = canteen.value;
+  void secretDel(PW);
   if (s?.loggedIn) void raw(`${s.url}/logout`, "GET", undefined, s.cookies).catch(() => {});
   save(s ? { url: s.url, cookies: {}, loggedIn: false } : null);
 }

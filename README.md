@@ -58,6 +58,11 @@ Webová verze: **https://bakalar-plus.bakalar-plus-worker.workers.dev** (na poč
 - **Kalendář třídy** ukládá jen to, co do něj spolužáci napíšou, a jméno autora ve tvaru „Jan N.“. Server se
   jednou zeptá školy, kdo jsi a do jaké třídy chodíš (krátkodobým tokenem, bez hesla), a pak vydá vlastní
   přístup na 30 dní. Kalendář vidí jen tvoje třída. Nevhodný záznam jde nahlásit; po 3 nahlášeních zmizí.
+- **Jídelna** (iCanteen) má vlastní jméno a heslo. Heslo jde jen do jídelny (z prohlížeče přes náš server
+  `/canteen`, který ho jen přepošle). Když necháš zaškrtnuté „Zapamatovat heslo v tomto zařízení“, uloží se
+  zašifrované jen v tomto zařízení (Android: Android Keystore; iPhone a web: AES-GCM s klíčem, který prohlížeč
+  nedovolí přečíst), aby tě aplikace mohla sama znovu přihlásit, když tě jídelna odhlásí. Na server nikdy nejde.
+  Odhlášením z jídelny se smaže.
 - Žádná reklama, žádná analytika.
 
 ## Pro vývojáře

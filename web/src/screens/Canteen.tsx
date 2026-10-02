@@ -122,6 +122,7 @@ function CanteenLogin({ open, url, onClose, onDone }: { open: boolean; url: stri
   const [addr, setAddr] = useState(url);
   const [user, setUser] = useState(canteen.value?.user ?? "");
   const [pass, setPass] = useState("");
+  const [remember, setRemember] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   useEffect(() => { if (open) { setAddr(url); setErr(""); setPass(""); } }, [open]);
@@ -129,7 +130,7 @@ function CanteenLogin({ open, url, onClose, onDone }: { open: boolean; url: stri
     e.preventDefault();
     setBusy(true); setErr("");
     try {
-      const ok = await canteenLogin(cleanUrl(addr), user.trim(), pass);
+      const ok = await canteenLogin(cleanUrl(addr), user.trim(), pass, remember);
       if (ok) { setPass(""); onDone(); } else setErr(t("canteenBadLogin"));
     } catch (x) { setErr((x as { code?: string }).code === "notcanteen" ? t("canteenNotFound") : errorText(x)); }
     setBusy(false);
@@ -140,7 +141,8 @@ function CanteenLogin({ open, url, onClose, onDone }: { open: boolean; url: stri
         <label>{t("canteenAddress")}<input type="url" inputMode="url" autoComplete="url" required value={addr} onInput={(e) => setAddr((e.target as HTMLInputElement).value)} /></label>
         <label>{t("username")}<input autoComplete="username" autoCapitalize="none" required value={user} onInput={(e) => setUser((e.target as HTMLInputElement).value)} /></label>
         <label>{t("password")}<input type="password" autoComplete="current-password" required value={pass} onInput={(e) => setPass((e.target as HTMLInputElement).value)} /></label>
-        <p class="hint">{t("canteenPrivacy")}</p>
+        <label class="check-row"><input type="checkbox" checked={remember} onChange={(e) => setRemember((e.target as HTMLInputElement).checked)} />{t("canteenRemember")}</label>
+        <p class="hint">{t(remember ? "canteenPrivacyRemember" : "canteenPrivacy")}</p>
         {err && <p class="hint err-text">{err}</p>}
         <button class="btn block" disabled={busy || !user.trim() || !pass}>{busy ? <Spinner small /> : t("canteenLogin")}</button>
       </form>

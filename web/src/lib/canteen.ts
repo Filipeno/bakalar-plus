@@ -64,19 +64,38 @@ function merge(jar: Record<string, string>, setCookies: string[]) {
 
 const isLoginPage = (r: Raw) => (r.status >= 300 && /\/login/i.test(r.location)) || /přihlášení uživatele|name="j_password"/i.test(r.text);
 
-/** A page of the logged-in canteen; throws CanteenAuthError when the session (and "remember me") ran out. */
-async function page(path: string): Promise<string> {
+/**
+ * A page of the logged-in canteen; throws CanteenAuthError when the session (and "remember me") ran out.
+ * `expect` must appear in the page: when iCanteen drops a session it doesn't always send the login page, it can
+ * answer with some other page (or redirect to its home page) - that must not be read as "no menu".
+ */
+/**
+ * One canteen request at a time, each with the newest cookies. iCanteen replaces the "remember me" cookie whenever
+ * it is used; two requests sent together with the same old one look like a stolen cookie to it, and it signs the
+ * user out everywhere (that is what happened when the menu, credit and exchange loaded in parallel).
+ */
+let queue: Promise<unknown> = Promise.resolve();
+function page(path: string, expect: RegExp): Promise<string> {
+  const run = queue.then(() => pageNow(path, expect));
+  queue = run.catch(() => {});
+  return run;
+}
+
+async function pageNow(path: string, expect: RegExp): Promise<string> {
   const s = canteen.value;
   if (!s?.loggedIn) throw new CanteenAuthError();
   const jar = { ...s.cookies };
-  let r = await raw(s.url + path, "GET", undefined, jar);
-  merge(jar, r.setCookies);
-  // "Remember me" logs in again with a redirect to the same page.
-  if (r.status >= 300 && r.status < 400 && r.location && !/\/login/i.test(r.location)) {
-    r = await raw(new URL(r.location, s.url).toString(), "GET", undefined, jar);
-    merge(jar, r.setCookies);
+  const get = async (url: string) => { const r = await raw(url, "GET", undefined, jar); merge(jar, r.setCookies); return r; };
+  let r = await get(s.url + path);
+  // "Remember me" signs in again and redirects, sometimes to the home page: follow, then ask for the page again.
+  for (let hops = 0; r.status >= 300 && r.status < 400 && r.location && !/\/login/i.test(r.location) && hops < 3; hops++) {
+    r = await get(new URL(r.location, s.url).toString());
+    if (r.status === 200 && !expect.test(r.text)) r = await get(s.url + path);
   }
-  if (isLoginPage(r)) { save({ ...s, cookies: jar, loggedIn: false }); throw new CanteenAuthError(); }
+  if (isLoginPage(r) || (r.status >= 300 && r.status < 400) || (r.status === 200 && !expect.test(r.text))) {
+    save({ ...s, cookies: jar, loggedIn: false });
+    throw new CanteenAuthError();
+  }
   save({ ...s, cookies: jar });
   if (r.status !== 200) throw new NetError(`HTTP ${r.status}`, r.status, "http");
   return r.text;
@@ -222,9 +241,10 @@ export async function getPublicMenu(url: string): Promise<MenuDay[]> {
   if (r.status !== 200) throw new NetError(`HTTP ${r.status}`, r.status, "http");
   return parsePublicMenu(r.text);
 }
-export const getMenu = async () => parseMenu(await page("/faces/secured/mobile.jsp?terminal=false&keyboard=&printer="));
-export const getAccount = async () => parseAccount(await page("/web/setting"));
-export const getBurza = async () => parseBurza(await page("/faces/secured/burza.jsp"));
+// What each page must contain to count as "signed in" (see page()).
+export const getMenu = async () => parseMenu(await page("/faces/secured/mobile.jsp?terminal=false&keyboard=&printer=", /jidelnicek|orderContent|Litujeme/i));
+export const getAccount = async () => parseAccount(await page("/web/setting", /id="Kredit"|Kredit/));
+export const getBurza = async () => parseBurza(await page("/faces/secured/burza.jsp", /tableDataShow|burz/i));
 
 /**
  * Order, cancel, re-order, put into / take from the exchange: iCanteen does all of it with a GET to the link the
@@ -232,6 +252,6 @@ export const getBurza = async () => parseBurza(await page("/faces/secured/burza.
  */
 export async function canteenAction(link: string) {
   const path = link.endsWith("amount=") ? `${link}1` : link;
-  const res = await page(`/faces/secured/${path.replace(/^\/+/, "")}`);
+  const res = await page(`/faces/secured/${path.replace(/^\/+/, "")}`, /[\s\S]/);
   if (/(^|\W)(fail|Chyba)(\W|$)/i.test(res.slice(0, 400))) throw new NetError(res.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200) || "error", 0, "canteen");
 }

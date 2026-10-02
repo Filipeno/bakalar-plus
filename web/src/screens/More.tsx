@@ -31,6 +31,7 @@ export function More() {
         ))}
         {settings.value.publicOk && <Row big icon="user" title={t("teachersTitle")} sub={t("teachersSub")} chevron onClick={() => go("/teachers")} />}
         {logged && <Row big icon="clock-countdown" title={t("absence")} chevron onClick={() => go("/absence")} />}
+        {logged && <Row big icon="dots-three-outline" title={t("extras")} sub={t("extrasSub")} chevron onClick={() => go("/extras")} />}
         {!logged && <Row big icon="sign-in" title={t("loginAction")} sub={t("unlockHint")} chevron onClick={() => go("/login")} />}
         <Row big icon="gear" title={t("settings")} chevron onClick={() => go("/settings")} />
         <Row big icon="sliders-horizontal" title={t("customize")} chevron onClick={() => go("/customize")} />

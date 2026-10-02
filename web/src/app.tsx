@@ -12,6 +12,8 @@ import { Grades } from "./screens/Grades";
 import { Calendar } from "./screens/Calendar";
 import { Absence, Homework, Messages, More } from "./screens/More";
 import { Compare, FreeRooms, Teachers, WhereNow } from "./screens/Tools";
+import { Extras } from "./screens/Extras";
+import { UpdatePrompt } from "./ui/update-prompt";
 import { Customize, Login, Settings, Welcome } from "./screens/Setup";
 import { wide } from "./ui/layout";
 import { useMessages } from "./lib/data";
@@ -19,12 +21,12 @@ import { useMessages } from "./lib/data";
 const SCREENS: Record<string, () => preact.JSX.Element> = {
   "/today": Today, "/timetable": Timetable, "/grades": Grades, "/calendar": Calendar, "/more": More,
   "/homework": Homework, "/messages": Messages, "/absence": Absence,
-  "/compare": Compare, "/where": WhereNow, "/rooms": FreeRooms, "/teachers": Teachers,
+  "/compare": Compare, "/where": WhereNow, "/rooms": FreeRooms, "/teachers": Teachers, "/extras": Extras,
   "/settings": Settings, "/customize": Customize, "/login": Login, "/welcome": Welcome,
 };
 
 // Screens that keep the tab bar (everything reachable from a tab or from More); settings and sign-in hide it.
-const WITH_TABS = ["/today", "/timetable", "/grades", "/calendar", "/homework", "/messages", "/where", "/compare", "/rooms", "/teachers", "/absence", "/more"];
+const WITH_TABS = ["/today", "/timetable", "/grades", "/calendar", "/homework", "/messages", "/where", "/compare", "/rooms", "/teachers", "/absence", "/extras", "/more"];
 
 export function App() {
   const s = settings.value;
@@ -50,6 +52,7 @@ export function App() {
           )}
           <Screen key={path} />
         </div>
+        <UpdatePrompt />
       </div>
     );
   }
@@ -62,6 +65,7 @@ export function App() {
         </button>
       )}
       <Screen key={path} />
+      <UpdatePrompt />
       {showTabs && (
         <nav class="tabbar">
           <div class="tabbar-in">
@@ -106,6 +110,7 @@ function Sidebar({ active }: { active: string }) {
           <div class="side-label">{t("school")}</div>
           {school.map((s) => item(sectionPath(s), SECTION_META[s].icon, SECTION_META[s].label, s === "messages" && unread ? String(unread) : undefined))}
           {u && item("/absence", "clock-countdown", "absence")}
+          {u && item("/extras", "dots-three-outline", "extras")}
         </div>
       )}
       {tools.length > 0 && (

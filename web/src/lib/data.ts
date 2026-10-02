@@ -55,6 +55,10 @@ export const useHomework = () => useData(uk("hw"), () => bk.getHomework(addDays(
 export const useMessages = () => useData(uk("msg"), bk.getMessages, 15 * 60_000);
 export const useEvents = () => useData(uk("ev"), bk.getEvents, 60 * 60_000);
 export const useAbsence = () => useData(uk("abs"), bk.getAbsence, 60 * 60_000);
+export const useFinalMarks = () => useData(uk("fin"), bk.getFinalMarks, 12 * 3600_000);
+export const useSubstitutions = () => useData(uk("subst"), bk.getSubstitutions, 15 * 60_000);
+export const useSubjects = () => useData(uk("subj"), bk.getSubjects, 24 * 3600_000);
+export const useThemes = (id: string | null) => useData(id && user.value ? `th:${user.value.uid}:${id}` : null, () => bk.getThemes(id!), 3600_000);
 
 // ---- linking a lesson's teacher / room / class to the public directory ----
 

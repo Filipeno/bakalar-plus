@@ -306,3 +306,63 @@ export function htmlToText(html: string): string {
   const doc = new DOMParser().parseFromString(html.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|li|h\d)>/gi, "\n"), "text/html");
   return tidy(doc.body.textContent ?? "");
 }
+
+// ---------------- less used modules (Více → Další z Bakalářů) ----------------
+
+/** One school report term ("vysvědčení"): final marks per subject. */
+export interface FinalTerm {
+  id: string; label: string; year: string; closed: boolean;
+  average: number | null; absent: number; unexcused: number; achievement: string;
+  marks: { subject: string; abbrev: string; mark: string }[];
+}
+
+export async function getFinalMarks(): Promise<FinalTerm[]> {
+  const j = await api<any>("/api/3/marks/final");
+  return (j.CertificateTerms ?? []).map((t: any, i: number): FinalTerm => {
+    const subj = new Map<string, any>((t.Subjects ?? []).map((s: any) => [String(s.Id ?? "").trim(), s]));
+    return {
+      id: `${t.SchoolYear ?? ""}-${t.Semester ?? ""}-${i}`,
+      label: [t.GradeName, t.SemesterName].filter(Boolean).join(" · ") || String(t.SchoolYear ?? ""),
+      year: String(t.SchoolYear ?? ""), closed: !!t.Closed,
+      average: typeof t.MarksAverage === "number" && t.MarksAverage > 0 ? t.MarksAverage : null,
+      absent: t.AbsentHours ?? 0, unexcused: t.NotExcusedHours ?? 0, achievement: String(t.AchievementText ?? "").trim(),
+      marks: (t.FinalMarks ?? []).map((m: any) => {
+        const s = subj.get(String(m.SubjectId ?? "").trim());
+        return { subject: String(s?.Name ?? m.SubjectName ?? "").trim(), abbrev: String(s?.Abbrev ?? "").trim(), mark: String(m.MarkText ?? "").trim() };
+      }),
+    };
+  }).reverse();   // newest first
+}
+
+export interface Substitution { day: string; hours: string; type: string; text: string; time: string }
+
+export async function getSubstitutions(): Promise<Substitution[]> {
+  const j = await api<any>("/api/3/substitutions");
+  return (j.Changes ?? []).map((c: any): Substitution => ({
+    day: String(c.Day ?? "").slice(0, 10), hours: String(c.Hours ?? "").trim(),
+    type: String(c.TypeName || c.ChangeType || "").trim(), text: String(c.Description ?? "").trim(), time: String(c.Time ?? "").trim(),
+  })).sort((a: Substitution, b: Substitution) => a.day.localeCompare(b.day));
+}
+
+export interface SubjectInfo { id: string; name: string; abbrev: string; teacher: string; teacherAbbrev: string; email: string; web: string; phone: string }
+
+export async function getSubjects(): Promise<SubjectInfo[]> {
+  const j = await api<any>("/api/3/subjects");
+  return (j.Subjects ?? []).map((s: any): SubjectInfo => ({
+    id: String(s.SubjectID ?? "").trim(), name: String(s.SubjectName ?? "").trim(), abbrev: String(s.SubjectAbbrev ?? "").trim(),
+    teacher: String(s.TeacherName ?? "").trim(), teacherAbbrev: String(s.TeacherAbbrev ?? "").trim(),
+    email: String(s.TeacherEmail ?? "").trim(), web: String(s.TeacherWeb ?? "").trim(),
+    phone: String(s.TeacherSchoolPhone || s.TeacherMobilePhone || "").trim(),
+  })).sort((a: SubjectInfo, b: SubjectInfo) => a.name.localeCompare(b.name, "cs"));
+}
+
+/** What was taught in a subject, lesson by lesson ("Výuka"). Many schools leave it empty. */
+export interface Theme { date: string; hour: string; theme: string; note: string }
+
+export async function getThemes(subjectId: string): Promise<Theme[]> {
+  const j = await api<any>(`/api/3/subjects/themes/${encodeURIComponent(subjectId)}`);
+  return (j.Themes ?? []).map((t: any): Theme => ({
+    date: String(t.Date ?? "").slice(0, 10), hour: String(t.HourCaption ?? t.LessonLabel ?? "").trim(),
+    theme: String(t.Theme ?? "").trim(), note: String(t.Note ?? "").trim(),
+  })).sort((a: Theme, b: Theme) => b.date.localeCompare(a.date));
+}

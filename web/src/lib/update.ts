@@ -10,7 +10,10 @@ export const updating = signal<"idle" | "busy" | "permission" | "error">("idle")
 const CHECKED = "bp.updateChecked";
 const EVERY = 6 * 3600_000;
 
-/** Checks GitHub; by default at most every 6 hours (the Settings button forces it). Resolves to the info or null if unreachable. */
+/**
+ * Checks GitHub. The app checks on every start (force) and, when it comes back to the foreground, at most every
+ * 6 hours; the Settings button forces it too. Resolves to the info or null if unreachable.
+ */
 export async function checkForUpdate(force = false): Promise<UpdateInfo | null> {
   if (!native) return null;
   if (!force && Date.now() - Number(localStorage.getItem(CHECKED) || 0) < EVERY) return update.value;
@@ -21,6 +24,14 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
     return info;
   } catch { return null; }
 }
+
+if (native) document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void checkForUpdate(); });
+
+/** The startup prompt for a new version shows once per version and day ("Později" hides it until tomorrow). */
+const PROMPTED = "bp.updatePrompted";
+export const promptKey = (u: UpdateInfo) => `${u.latest}:${new Date().toDateString()}`;
+export const wasPrompted = (u: UpdateInfo) => localStorage.getItem(PROMPTED) === promptKey(u);
+export const markPrompted = (u: UpdateInfo) => localStorage.setItem(PROMPTED, promptKey(u));
 
 export async function installUpdate() {
   const u = update.value;

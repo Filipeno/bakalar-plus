@@ -45,7 +45,7 @@ final class Bridge {
                 // Public pages and the school directory only; authorised calls go through "api".
                 String url = a.getString("url");
                 if (!url.startsWith("https://")) throw new Baka.BakaException("other", "https only");
-                return Baka.http(url, a.optString("method", "GET"), a.optJSONObject("headers"), a.has("body") ? a.optString("body") : null).toJson().toString();
+                return Baka.http(url, a.optString("method", "GET"), a.optJSONObject("headers"), a.has("body") ? a.optString("body") : null, a.optBoolean("raw")).toJson().toString();
             }
             case "login":
                 Baka.login(act, a.getString("school"), a.getString("username"), a.getString("password"));

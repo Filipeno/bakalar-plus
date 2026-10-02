@@ -13,6 +13,7 @@ import { Calendar } from "./screens/Calendar";
 import { Absence, Homework, Messages, More } from "./screens/More";
 import { Compare, FreeRooms, Teachers, WhereNow } from "./screens/Tools";
 import { Extras } from "./screens/Extras";
+import { Canteen } from "./screens/Canteen";
 import { UpdatePrompt } from "./ui/update-prompt";
 import { Customize, Login, Settings, Welcome } from "./screens/Setup";
 import { wide } from "./ui/layout";
@@ -21,12 +22,12 @@ import { useMessages } from "./lib/data";
 const SCREENS: Record<string, () => preact.JSX.Element> = {
   "/today": Today, "/timetable": Timetable, "/grades": Grades, "/calendar": Calendar, "/more": More,
   "/homework": Homework, "/messages": Messages, "/absence": Absence,
-  "/compare": Compare, "/where": WhereNow, "/rooms": FreeRooms, "/teachers": Teachers, "/extras": Extras,
+  "/compare": Compare, "/where": WhereNow, "/rooms": FreeRooms, "/teachers": Teachers, "/extras": Extras, "/canteen": Canteen,
   "/settings": Settings, "/customize": Customize, "/login": Login, "/welcome": Welcome,
 };
 
 // Screens that keep the tab bar (everything reachable from a tab or from More); settings and sign-in hide it.
-const WITH_TABS = ["/today", "/timetable", "/grades", "/calendar", "/homework", "/messages", "/where", "/compare", "/rooms", "/teachers", "/absence", "/extras", "/more"];
+const WITH_TABS = ["/today", "/timetable", "/grades", "/calendar", "/homework", "/messages", "/where", "/compare", "/rooms", "/teachers", "/absence", "/extras", "/canteen", "/more"];
 
 export function App() {
   const s = settings.value;
@@ -105,11 +106,13 @@ function Sidebar({ active }: { active: string }) {
       <div class="side-group">
         {main.map((s) => item(sectionPath(s), SECTION_META[s].icon, SECTION_META[s].label))}
       </div>
-      {(school.length > 0 || u) && (
+      {/* Always shown: the canteen works without a Bakaláři login. */}
+      {(
         <div class="side-group">
           <div class="side-label">{t("school")}</div>
           {school.map((s) => item(sectionPath(s), SECTION_META[s].icon, SECTION_META[s].label, s === "messages" && unread ? String(unread) : undefined))}
           {u && item("/absence", "clock-countdown", "absence")}
+          {item("/canteen", "notebook", "canteen")}
           {u && item("/extras", "dots-three-outline", "extras")}
         </div>
       )}

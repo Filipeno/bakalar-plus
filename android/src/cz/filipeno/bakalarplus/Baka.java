@@ -21,8 +21,14 @@ import java.util.Iterator;
 final class Baka {
     static final class Res {
         final int status; final String text;
+        /** Only for raw requests (the canteen): cookies the server set, and where a redirect points. */
+        org.json.JSONArray setCookies; String location;
         Res(int status, String text) { this.status = status; this.text = text; }
-        JSONObject toJson() throws Exception { return new JSONObject().put("status", status).put("text", text); }
+        JSONObject toJson() throws Exception {
+            JSONObject o = new JSONObject().put("status", status).put("text", text);
+            if (setCookies != null) o.put("setCookies", setCookies).put("location", location == null ? "" : location);
+            return o;
+        }
     }
 
     static final class BakaException extends Exception {
@@ -35,9 +41,18 @@ final class Baka {
     // ---------------- plain HTTP ----------------
 
     static Res http(String url, String method, JSONObject headers, String body) throws BakaException {
+        return http(url, method, headers, body, false);
+    }
+
+    /**
+     * raw = true (the school canteen): don't follow redirects and hand back Set-Cookie and Location, so the web
+     * code can keep the canteen's login cookies itself. Nothing is stored here.
+     */
+    static Res http(String url, String method, JSONObject headers, String body, boolean raw) throws BakaException {
         HttpURLConnection c = null;
         try {
             c = (HttpURLConnection) new URL(url).openConnection();
+            if (raw) c.setInstanceFollowRedirects(false);
             c.setConnectTimeout(15000);
             c.setReadTimeout(30000);
             c.setRequestMethod(method == null ? "GET" : method);
@@ -54,7 +69,15 @@ final class Baka {
             }
             int status = c.getResponseCode();
             InputStream in = status >= 400 ? c.getErrorStream() : c.getInputStream();
-            return new Res(status, in == null ? "" : readAll(in));
+            Res r = new Res(status, in == null ? "" : readAll(in));
+            if (raw) {
+                r.setCookies = new org.json.JSONArray();
+                java.util.List<String> sc = c.getHeaderFields().get("Set-Cookie");
+                if (sc == null) sc = c.getHeaderFields().get("set-cookie");
+                if (sc != null) for (String v : sc) r.setCookies.put(v);
+                r.location = c.getHeaderField("Location");
+            }
+            return r;
         } catch (java.io.IOException e) {
             throw new BakaException("offline", e.getClass().getSimpleName());
         } finally {

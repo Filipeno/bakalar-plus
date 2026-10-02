@@ -8,7 +8,8 @@ Worker. The Worker tries every school directly first and only uses the gateway f
 - Listens on `127.0.0.1` only. The Worker reaches it privately through a Cloudflare Tunnel (a Workers VPC
   service), so it has no public address.
 - Requires the shared secret in `X-BP-Gateway`, only forwards `https` requests to Bakaláři paths
-  (`/api…`, `/Timetable/Public…`), stores nothing and doesn't log URLs.
+  (`/api…`, `/Timetable/Public…`) and school-canteen (iCanteen) pages, stores nothing and doesn't log URLs.
+  Cookies pass through for the canteen login but aren't kept.
 - Python standard library only (works on a 32-bit Raspberry Pi).
 
 ## Setup (Linux with systemd and cloudflared already running a tunnel)

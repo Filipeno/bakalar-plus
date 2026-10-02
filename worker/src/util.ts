@@ -18,7 +18,7 @@ export interface Env {
 export const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, X-BP-Cookie",
   "Access-Control-Max-Age": "86400",
 };
 

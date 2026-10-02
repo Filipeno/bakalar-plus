@@ -29,6 +29,7 @@ export function More() {
           <Row big icon={SECTION_META[s].icon} title={t(SECTION_META[s].label)} chevron onClick={() => go(sectionPath(s))}
             badge={s === "messages" && unread ? String(unread) : undefined} />
         ))}
+        <Row big icon="notebook" title={t("canteen")} sub={t("canteenSub")} chevron onClick={() => go("/canteen")} />
         {settings.value.publicOk && <Row big icon="user" title={t("teachersTitle")} sub={t("teachersSub")} chevron onClick={() => go("/teachers")} />}
         {logged && <Row big icon="clock-countdown" title={t("absence")} chevron onClick={() => go("/absence")} />}
         {logged && <Row big icon="dots-three-outline" title={t("extras")} sub={t("extrasSub")} chevron onClick={() => go("/extras")} />}

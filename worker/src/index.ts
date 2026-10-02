@@ -14,6 +14,7 @@ export default {
     if (req.method === "OPTIONS") return noContent();
     try {
       if (url.pathname === "/relay") return await relay(req, url, env, ctx);
+      if (url.pathname === "/canteen") return await canteen(req, url, env, ctx);
       if (url.pathname.startsWith("/cal/")) return await calendar(req, url, env);
       if (url.pathname.startsWith("/push/")) return await pushApi(req, url, env);
       if (url.pathname === "/me" && req.method === "DELETE") return await deleteMe(req, env);
@@ -79,6 +80,56 @@ async function relay(req: Request, url: URL, env: Env, ctx: ExecutionContext): P
   const out = new Headers({ ...CORS, "x-relay": "ok", "Cache-Control": "no-store" });
   out.set("Content-Type", r.headers.get("content-type") ?? "text/plain");
   return new Response(r.body, { status: r.status, headers: out });
+}
+
+// ---------------- school canteen (iCanteen) relay ----------------
+// Browsers can't talk to iCanteen directly (no CORS) and can't read its cookies, so the web app sends them here:
+// X-BP-Cookie becomes the Cookie header, and the answer's Set-Cookie / Location come back as X-BP-Set-Cookie
+// (JSON list) / X-BP-Location. Redirects are not followed. Nothing is stored: the login cookies stay on the device,
+// the password only passes through once at login. Only iCanteen's own pages are allowed.
+
+const CANTEEN_PATH = /^(?!.*\.\.)\/(login|j_spring_security_check|logout|web\/setting|faces\/(secured\/)?[\w./-]*|help)?$/i;
+
+async function isICanteen(env: Env, origin: string, ctx: ExecutionContext): Promise<boolean> {
+  const key = new Request(`https://bp-cache.invalid/is-icanteen2?u=${encodeURIComponent(origin)}`);
+  const hit = await caches.default.match(key);
+  if (hit) return (await hit.text()) === "1";
+  let ok = false;
+  try {
+    const r = await schoolFetch(env, `${origin}/login`, { headers: { Accept: "text/html" }, redirect: "manual" });
+    ok = r.status === 200 && /iCanteen/i.test(await r.text());
+  } catch { ok = false; }
+  ctx.waitUntil(caches.default.put(key, new Response(ok ? "1" : "0", { headers: { "Cache-Control": `max-age=${ok ? 86400 : 60}` } })));
+  return ok;
+}
+
+async function canteen(req: Request, url: URL, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const denied = (why: string) => new Response(why, { status: 403, headers: { ...CORS, "x-relay": "denied" } });
+  let target: URL;
+  try { target = new URL(url.searchParams.get("u") ?? ""); } catch { return denied("bad url"); }
+  if (target.protocol !== "https:" || target.username || target.password || target.port) return denied("https only");
+  if (!CANTEEN_PATH.test(target.pathname)) return denied("path");
+  if (!["GET", "POST"].includes(req.method)) return denied("method");
+  if (!(await isICanteen(env, target.origin, ctx))) return denied("not an iCanteen server");
+
+  const headers = new Headers({ "User-Agent": "BakalariPlus/1.0 (+https://github.com/Filipeno/bakalar-plus)" });
+  const cookie = req.headers.get("x-bp-cookie");
+  if (cookie) headers.set("Cookie", cookie);
+  for (const h of ["content-type", "accept"]) { const v = req.headers.get(h); if (v) headers.set(h, v); }
+  const body = req.method === "GET" ? undefined : await req.arrayBuffer();
+  if (body && body.byteLength > 16 * 1024) return denied("too big");
+
+  const r = await schoolFetch(env, target.toString(), { method: req.method, headers, body, redirect: "manual" });
+  const out = new Headers({
+    ...CORS, "x-relay": "ok", "Cache-Control": "no-store",
+    "Access-Control-Expose-Headers": "X-BP-Set-Cookie, X-BP-Location, x-relay",
+    "Content-Type": r.headers.get("content-type") ?? "text/html",
+    "X-BP-Set-Cookie": JSON.stringify(r.headers.getSetCookie()),
+  });
+  const loc = r.headers.get("location");
+  if (loc) out.set("X-BP-Location", loc);
+  // A 3xx with a Location would make the browser follow it; the app wants to see it instead.
+  return new Response(r.status >= 300 && r.status < 400 ? "" : r.body, { status: r.status >= 300 && r.status < 400 ? 200 : r.status, headers: out });
 }
 
 // ---------------- shared class calendar ----------------

@@ -7,7 +7,7 @@ compatibility_date = "2026-09-01"
 directory = "../web/dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/relay", "/cal/*", "/push/*", "/me"]
+run_worker_first = ["/relay", "/canteen", "/cal/*", "/push/*", "/me"]
 
 [[d1_databases]]
 binding = "DB"

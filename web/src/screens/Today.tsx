@@ -159,7 +159,7 @@ function NowCard({ day, tomorrow }: { day?: Day; tomorrow?: Day }) {
             </div>
           )}
         </div>
-        {current && <div class="wavy" role="progressbar" aria-valuenow={Math.round(pct)}><span style={{ width: `${pct}%` }} /><i /></div>}
+        {current && <div class="wavy" role="progressbar" aria-valuenow={Math.round(pct)} style={{ "--p": `${pct}%` }}><span style={{ width: `${pct}%` }} /><i /></div>}
         <div class="xp-times"><span>{hhmm(p.begin)}</span><span>{t("endsShort", { t: hhmm(p.end) })}</span></div>
         <div class="xp-next"><Icon name="caret-right" size={18} />
           <span class="grow">{after ? nextLine(after) : t("lastEnds", { t: hhmm(periods[periods.length - 1].end) })}{after ? ` · ${t("lastEnds", { t: hhmm(periods[periods.length - 1].end) })}` : ""}</span>

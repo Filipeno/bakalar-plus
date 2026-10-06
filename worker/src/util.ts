@@ -81,7 +81,8 @@ async function gatewayFetch(env: Env, url: string, init: RequestInit): Promise<R
   const headers = new Headers(init.headers);
   headers.set("X-BP-Gateway", env.GATEWAY_SECRET ?? "");
   return env.GATEWAY!.fetch(`http://127.0.0.1:8770/fetch?u=${encodeURIComponent(url)}`, {
-    method: init.method, headers, body: init.body, signal: AbortSignal.timeout(30_000),
+    // The gateway hands 3xx back as-is; following it here would go to the school directly (which drops Cloudflare).
+    method: init.method, headers, body: init.body, redirect: init.redirect, signal: AbortSignal.timeout(30_000),
   });
 }
 

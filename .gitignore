@@ -11,3 +11,5 @@ android/*.idsig
 android/release.keystore
 android/keystore.pass
 android/cloud-url.txt
+
+.claude/settings.local.json

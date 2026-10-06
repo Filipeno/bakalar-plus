@@ -134,16 +134,18 @@ function CanteenLogin({ open, url, onClose, onDone }: { open: boolean; url: stri
       if (ok) { setPass(""); onDone(); } else setErr(t("canteenBadLogin"));
     } catch (x) { setErr((x as { code?: string }).code === "notcanteen" ? t("canteenNotFound") : errorText(x)); }
     setBusy(false);
+    // On a phone the keyboard covers the bottom of the sheet; drop it so the error at the top is seen.
+    (document.activeElement as HTMLElement | null)?.blur();
   };
   return (
     <Sheet open={open} onClose={onClose} title={t("canteenLoginTitle")}>
       <form class="form" onSubmit={submit} style={{ marginTop: "12px" }}>
+        {err && <div class="error-box" role="alert" style={{ marginBottom: 0 }}><Icon name="warning" size={20} /><span class="grow">{err}</span></div>}
         <label>{t("canteenAddress")}<input type="url" inputMode="url" autoComplete="url" required value={addr} onInput={(e) => setAddr((e.target as HTMLInputElement).value)} /></label>
         <label>{t("username")}<input autoComplete="username" autoCapitalize="none" required value={user} onInput={(e) => setUser((e.target as HTMLInputElement).value)} /></label>
         <label>{t("password")}<input type="password" autoComplete="current-password" required value={pass} onInput={(e) => setPass((e.target as HTMLInputElement).value)} /></label>
         <label class="check-row"><input type="checkbox" checked={remember} onChange={(e) => setRemember((e.target as HTMLInputElement).checked)} />{t("canteenRemember")}</label>
         <p class="hint">{t(remember ? "canteenPrivacyRemember" : "canteenPrivacy")}</p>
-        {err && <p class="hint err-text">{err}</p>}
         <button class="btn block" disabled={busy || !user.trim() || !pass}>{busy ? <Spinner small /> : t("canteenLogin")}</button>
       </form>
     </Sheet>

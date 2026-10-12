@@ -13,7 +13,7 @@ export interface Settings {
   favourites: Target[];
   lang: "auto" | "cs" | "en";
   theme: "auto" | "light" | "dark";
-  notify: { changes: boolean; grades: boolean; homework: boolean; messages: boolean; evening: boolean; eveningHour: number };
+  notify: { changes: boolean; grades: boolean; homework: boolean; messages: boolean; evening: boolean; eveningHour: number; live?: boolean };
   onboarded: boolean;
   view: "day" | "week";
   compare: Target[];

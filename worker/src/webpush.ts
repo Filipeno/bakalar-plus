@@ -69,7 +69,8 @@ export async function sendPush(sub: PushSubscriptionJSON, data: unknown, v: Vapi
       "Content-Encoding": "aes128gcm",
       "Content-Type": "application/octet-stream",
       TTL: String(ttl),
-      Urgency: "normal",
+      // "high" maps to APNs priority 10 on Safari; "normal" lets Apple hold iPhone pushes back to save battery.
+      Urgency: "high",
     },
     body,
   });

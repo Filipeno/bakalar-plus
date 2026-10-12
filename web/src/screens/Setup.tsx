@@ -240,6 +240,8 @@ export function Settings() {
   const [picker, setPicker] = useState(false);
   const [msg, setMsg] = useState("");
   const [upd, setUpd] = useState("");
+  const [exempt, setExempt] = useState(true);
+  useEffect(() => { native?.call<{ exempt: boolean }>("battery").then((r) => setExempt(r.exempt)).catch(() => {}); }, []);
   const setNotify = async (p: Partial<typeof s.notify>) => {
     if (native && Object.values(p).some((v) => v === true)) await native.call("ensureNotifications").catch(() => {});
     patchSettings({ notify: { ...s.notify, ...p } });
@@ -274,6 +276,14 @@ export function Settings() {
           {user.value && <SwitchRow label={t("notifyGrades")} v={s.notify.grades} on={(v) => setNotify({ grades: v })} />}
           {user.value && <SwitchRow label={t("notifyHomework")} v={s.notify.homework} on={(v) => setNotify({ homework: v })} />}
           {user.value && <SwitchRow label={t("notifyMessages")} v={s.notify.messages} on={(v) => setNotify({ messages: v })} />}
+          <SwitchRow label={t("notifyLive")} v={s.notify.live !== false} on={(v) => setNotify({ live: v })} />
+          {s.notify.live !== false && <p class="hint">{t("notifyLiveSub")}</p>}
+          {s.notify.live !== false && !exempt && (
+            <div class="row">
+              <span class="row-main"><span class="row-sub">{t("batteryHint")}</span></span>
+              <button class="btn small line" onClick={() => native?.call("battery", { ask: true }).then(() => setTimeout(() => native?.call<{ exempt: boolean }>("battery").then((r) => setExempt(r.exempt)), 1500))}>{t("batteryAllow")}</button>
+            </div>
+          )}
           <SwitchRow label={t("notifyEvening")} v={s.notify.evening} on={(v) => setNotify({ evening: v })} />
           {s.notify.evening && (
             <div class="row">

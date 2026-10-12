@@ -52,7 +52,7 @@ Webová verze: **https://bakalar-plus.bakalar-plus-worker.workers.dev** (na poč
     a nic neukládá; aplikace na to před přihlášením upozorní.
 - **Upozornění ve webové verzi**: když je zapneš, appka se do školy přihlásí ještě jednou a serveru předá jen
   tento druhý *refresh token* (heslo ne). Server ho drží zašifrovaný (AES-256-GCM, klíč je tajný údaj Workeru,
-  není v repozitáři), každých ~10 minut se jím podívá na známky a rozvrh a pošle, co je nového. Když ho škola
+  není v repozitáři), každé ~3 minuty se jím podívá na známky a rozvrh a pošle, co je nového. Když ho škola
   odmítne (třeba po změně hesla), server přestane a pošle upozornění „přihlášení vypršelo“. Tlačítko
   **Odhlásit a smazat moje data** smaže token, zařízení, uložený stav i tvoje záznamy v kalendáři třídy.
 - **Kalendář třídy** ukládá jen to, co do něj spolužáci napíšou, a jméno autora ve tvaru „Jan N.“. Server se
@@ -98,9 +98,9 @@ cd ../web && npm run build && cd ../worker && npm run deploy
   tokeny; když ho změníš, server je nerozšifruje a uživatelé dostanou „přihlášení vypršelo“.
 - Pro `wrangler dev` dej stejné hodnoty do `worker/.dev.vars` (je v `.gitignore`).
 - **Kontrolní smyčka**: cron běží každou minutu a vezme uživatele, kteří nebyli kontrolováni déle než
-  `CHECK_INTERVAL_MIN` (výchozí 10), nejvýš `CHECK_BATCH` (výchozí 20). Každou kontrolu spustí jako samostatné
+  `CHECK_INTERVAL_MIN` (výchozí 3), nejvýš `CHECK_BATCH` (výchozí 20). Každou kontrolu spustí jako samostatné
   volání Workeru (binding `SELF`), protože jedna kontrola spotřebuje kolem 10 ms výpočtu, což je celý limit jednoho
-  volání na bezplatném plánu. To dává ~200 lidí za 10 minut; když jich je víc, každý se kontroluje o něco řidčeji.
+  volání na bezplatném plánu. To dává ~60 lidí za 3 minuty (při větším počtu zvyšte `CHECK_INTERVAL_MIN`); když jich je víc, každý se kontroluje o něco řidčeji.
 - **Školy, které blokují Cloudflare** (třeba SPŠ Třebešín): Worker se ke škole přímo nedostane, tak jde přes bránu
   `gateway/gateway.py` na počítači s běžným českým připojením (Raspberry Pi). Worker ji volá soukromě přes
   Cloudflare Tunnel (Workers VPC), brána nemá žádnou veřejnou adresu, pouští jen cesty Bakalářů a nic neukládá.

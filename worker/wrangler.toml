@@ -32,7 +32,7 @@ service = "bakalar-plus"
 crons = ["* * * * *"]
 
 [vars]
-CHECK_INTERVAL_MIN = "10"
+CHECK_INTERVAL_MIN = "3"
 CHECK_BATCH = "20"
 
 # Secrets (never in this file), see README: SESSION_SECRET, TOKEN_KEY, VAPID_PUBLIC, VAPID_PRIVATE_JWK,

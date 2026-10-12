@@ -9,6 +9,7 @@ public class Boot extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent i) {
         SyncJob.schedule(c);
+        LiveService.sync(c);
         Widget.updateAll(c);
     }
 }

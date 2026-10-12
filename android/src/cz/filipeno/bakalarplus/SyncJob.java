@@ -68,7 +68,7 @@ public class SyncJob extends JobService {
 
     // ------------------------------------------------------------------
 
-    private static boolean cs(Context c) {
+    static boolean cs(Context c) {
         String l = Store.json(c, "prefs").optString("lang", "auto");
         return "cs".equals(l) || ("auto".equals(l) && ("cs".equals(Locale.getDefault().getLanguage()) || "sk".equals(Locale.getDefault().getLanguage())));
     }
@@ -86,7 +86,8 @@ public class SyncJob extends JobService {
         } catch (Exception e) { return iso; }
     }
 
-    static void run(Context c) throws Exception {
+    /** Synchronized: the periodic job and LiveService can fire together, and both would announce the same news. */
+    static synchronized void run(Context c) throws Exception {
         JSONObject prefs = Store.json(c, "prefs");
         String school = prefs.optString("school");
         if (school.isEmpty()) return;

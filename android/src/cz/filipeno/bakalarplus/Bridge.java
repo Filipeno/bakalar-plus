@@ -73,6 +73,15 @@ final class Bridge {
                 return Updater.check(act).toString();
             case "updateInstall":
                 return JSONObject.quote(Updater.install(act, a.getString("url"), a.optString("sha256")));
+            case "battery": {   // is the app exempt from battery optimisation? "ask" opens Android's own confirmation
+                android.os.PowerManager pm = act.getSystemService(android.os.PowerManager.class);
+                boolean ok = pm == null || pm.isIgnoringBatteryOptimizations(act.getPackageName());
+                if (!ok && a.optBoolean("ask")) {
+                    act.runOnUiThread(() -> act.startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            Uri.parse("package:" + act.getPackageName()))));
+                }
+                return new JSONObject().put("exempt", ok).toString();
+            }
             case "ensureNotifications":
                 if (Build.VERSION.SDK_INT >= 33 && act.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                     act.runOnUiThread(() -> act.requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1));
@@ -98,6 +107,7 @@ final class Bridge {
                     }
                     act.runOnUiThread(() -> act.applyTheme(a.optBoolean("dark")));
                     SyncJob.schedule(act);
+                    LiveService.sync(act);
                     return "null";
                 }
                 case "setWidget": {

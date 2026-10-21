@@ -63,5 +63,7 @@ if (cab.size) {
     "\nON CONFLICT (school_key, teacher) DO UPDATE SET room = excluded.room, author_name = excluded.author_name, updated = excluded.updated" +
     " WHERE cabinets.author_hash = 'seed';\n";
 }
-if (con.size) sql += "INSERT OR REPLACE INTO consultations (school_key, teacher, hours, source) VALUES\n" + [...con.values()].join(",\n") + ";\n";
+// Consultation hours are only ever seeded, so a new year's list replaces the old one whole (teachers who left lose their hours).
+if (con.size) sql += `DELETE FROM consultations WHERE school_key = ${q(schoolKey)};\n` +
+  "INSERT INTO consultations (school_key, teacher, hours, source) VALUES\n" + [...con.values()].join(",\n") + ";\n";
 if (out) writeFileSync(out, sql, "utf8"); else process.stdout.write(sql);

@@ -21,7 +21,19 @@ HEAD = {"jméno": "first", "příjmení": "last", "den": "day", "časové": "tim
 cols = None          # [(x, field)] sorted by x
 rows = []            # [{field: text}]
 
-for page in doc:
+# 2026/27 layout: one ruled table per page, "Jméno" (= "First SURNAME") | "Den konzultace" | "Čas konzultace" | "Místnost / pracoviště".
+# Cells can hold several lines (one per day), so read the ruled cells instead of guessing columns from word positions.
+def table_rows():
+    for page in doc:
+        for t in page.find_tables().tables:
+            for r in t.extract():
+                cells = [re.sub(r"\s+", " ", c or "").strip() for c in r]
+                if len(cells) == 4 and cells[0].lower() != "jméno" and cells[0]:
+                    yield {"name": cells[0], "day": cells[1], "time": cells[2], "room": cells[3]}
+
+tabular = list(table_rows())
+
+for page in ([] if tabular else doc):
     lines = {}
     for x0, y0, x1, y1, w, *_ in page.get_text("words"):
         lines.setdefault(round(y0 / 3), []).append((x0, w))
@@ -45,6 +57,11 @@ for page in doc:
             for f, v in cells.items(): rows[-1][f] = (rows[-1].get(f, "") + " " + v).strip()
 
 out = {}
+for r in tabular:
+    day, time = r["day"], r["time"].replace("-", "–")
+    # "Po předchozí dohodě" sits in both columns; several days list the day in each time line already
+    hours = time if not day or day == time or re.match(r"[^\d]+\d", time) else f"{day} {time}"
+    out[r["name"]] = {"room": r["room"], "by": label, "hours": hours}
 for r in rows:
     name = f'{r["last"]} {r["first"]}'
     hours = " ".join(x for x in (r.get("day", ""), r.get("time", "").replace("-", "–")) if x)
@@ -54,7 +71,7 @@ for r in rows:
     out[name] = {"room": room, "by": label, "hours": hours}
 
 if dst == "--check":   # counts only, writes nothing
-    print({f: sum(1 for r in rows if r.get(f)) for f in HEAD.values()}, label)
+    print({f: sum(1 for r in rows if r.get(f)) for f in HEAD.values()}, f"tables: {len(tabular)} rows", label)
     sys.exit(0)
 json.dump(out, open(dst, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 print(f"{len(out)} teachers ({sum(1 for v in out.values() if v['room'])} with a room) -> {dst}")

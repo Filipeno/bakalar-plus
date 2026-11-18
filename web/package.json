@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node test/marks.test.mjs"
+    "test": "node test/marks.test.mjs && node test/canteen-optimistic.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/google-sans-flex": "^5.3.1",

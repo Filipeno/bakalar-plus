@@ -1,7 +1,8 @@
 // Jídelna: the school canteen (iCanteen). Public menu without login; with the canteen's own login also credit,
-// ordering / cancelling and the meal exchange (burza). Every action that moves credit asks first.
+// ordering / cancelling and the meal exchange (burza). Order and cancel happen at once with an Undo snackbar;
+// the exchange actions still ask first.
 
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { fmtDate, t } from "../lib/i18n";
 import { today } from "../lib/model";
 import { settings, useData } from "../lib/store";
@@ -9,6 +10,7 @@ import {
   canteen, canteenAction, canteenLogin, canteenLogout, CanteenAuthError, cleanUrl, getAccount, getBurza, getMenu,
   getPublicMenu, guessCanteenUrl, type BurzaItem, type Meal, type MenuDay,
 } from "../lib/canteen";
+import { applyOrder, mealKey, runOptimistic, undoLink, type OrderKind } from "../lib/canteen-optimistic";
 import { Icon } from "../ui/icons";
 import { Empty, ErrorBox, Loading, Page, Segmented, Sheet, Spinner, Updated, errorText, usePullToRefresh } from "../ui/kit";
 import { isTab } from "../ui/router";
@@ -29,6 +31,49 @@ export function Canteen() {
   const burza = useData<BurzaItem[]>(logged ? `cburza:${url}` : null, getBurza, 2 * 60_000);
   const reload = () => { menu.reload(); acc.reload(); burza.reload(); pub.reload(); };
   usePullToRefresh(reload);
+
+  const locks = useRef(new Set<string>()).current;
+  const pending = useRef<Promise<unknown>>(Promise.resolve());
+  const [toast, setToast] = useState<{ text: string; undo?: () => void; err?: boolean } | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), toast.err ? 7000 : 5000);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  // Show the new state at once, call the server in the background, roll back and show the error if it refuses.
+  const order = (kind: OrderKind, meal: Meal, link: string) => {
+    const before = menu.data ?? [];
+    const prev = kind === "reorder" ? before.find((d) => d.date === meal.date)?.meals.find((m) => m.ordered) : undefined;
+    const run = runOptimistic({
+      key: mealKey(meal), locks,
+      apply: () => menu.set(applyOrder(before, meal, kind)),
+      rollback: () => menu.set(before),
+      call: () => canteenAction(link),
+    });
+    pending.current = run;
+    setToast({ text: t(kind === "delete" ? "mealCancelled" : "mealOrderedToast"), undo: () => undo(kind, meal, prev) });
+    run.then((r) => {
+      if (r.status === "failed") setToast({ text: errorText(r.error), err: true });
+      if (r.status !== "busy") { menu.reload(); acc.reload(); }
+    });
+  };
+  const undo = async (kind: OrderKind, meal: Meal, prev?: Meal) => {
+    setToast(null);
+    await pending.current;
+    const fresh = await getMenu().catch(() => null);
+    const link = fresh && undoLink(fresh, meal, kind, prev);
+    if (!fresh || !link) { setToast({ text: t("mealUndoFailed"), err: true }); menu.reload(); return; }
+    const back: OrderKind = kind === "delete" ? "make" : kind === "make" ? "delete" : "reorder";
+    const r = await runOptimistic({
+      key: mealKey(meal), locks,
+      apply: () => menu.set(applyOrder(fresh, back === "reorder" && prev ? prev : meal, back)),
+      rollback: () => menu.set(fresh),
+      call: () => canteenAction(link),
+    });
+    if (r.status === "failed") setToast({ text: errorText(r.error), err: true });
+    if (r.status !== "busy") { menu.reload(); acc.reload(); }
+  };
 
   const authLost = [menu.error, acc.error, burza.error].some((e) => e instanceof CanteenAuthError);
   const days = (logged ? menu.data : pub.data) ?? [];
@@ -113,7 +158,14 @@ export function Canteen() {
       <p class="hint" style={{ margin: "14px 4px" }}>{t("canteenFoot")}</p>
 
       <CanteenLogin open={login} url={url} onClose={() => setLogin(false)} onDone={() => { setLogin(false); setTimeout(reload, 50); }} />
-      <MealSheet open={open} burza={burza.data ?? []} onClose={() => setOpen(null)} onDone={() => { setOpen(null); reload(); }} />
+      <MealSheet open={open} burza={burza.data ?? []} onClose={() => setOpen(null)} onDone={() => { setOpen(null); reload(); }}
+        onOrder={(kind, meal, link) => { setOpen(null); order(kind, meal, link); }} />
+      {toast && (
+        <div class={`snackbar ${toast.err ? "err" : ""}`} role={toast.err ? "alert" : "status"}>
+          <span class="grow">{toast.text}</span>
+          {toast.undo && <button class="snackbar-act" onClick={toast.undo}>{t("undo")}</button>}
+        </div>
+      )}
     </Page>
   );
 }
@@ -153,7 +205,10 @@ function CanteenLogin({ open, url, onClose, onDone }: { open: boolean; url: stri
 }
 
 /** Details of a meal (or an exchange offer) and the actions; each one needs a second tap because it moves credit. */
-function MealSheet({ open, burza, onClose, onDone }: { open: { meal?: Meal; burza?: BurzaItem } | null; burza: BurzaItem[]; onClose: () => void; onDone: () => void }) {
+function MealSheet({ open, burza, onClose, onDone, onOrder }: {
+  open: { meal?: Meal; burza?: BurzaItem } | null; burza: BurzaItem[]; onClose: () => void; onDone: () => void;
+  onOrder: (kind: OrderKind, meal: Meal, link: string) => void;
+}) {
   const [sure, setSure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -161,16 +216,17 @@ function MealSheet({ open, burza, onClose, onDone }: { open: { meal?: Meal; burz
   const m = open?.meal;
   const offer = open?.burza ?? (m && !m.ordered ? burza.find((b) => b.date === m.date && b.variant === m.variant) : undefined);
 
-  const actions: { key: string; label: string; confirm: string; link: string; primary?: boolean }[] = [];
-  if (m?.orderUrl && m.orderType === "make") actions.push({ key: "make", label: t("mealOrder"), confirm: t("mealOrderSure", { p: m.price != null ? kc(m.price) : "" }), link: m.orderUrl, primary: true });
-  if (m?.orderUrl && m.orderType === "reorder") actions.push({ key: "reorder", label: t("mealReorder"), confirm: t("mealReorderSure"), link: m.orderUrl, primary: true });
-  if (m?.orderUrl && m.orderType === "delete") actions.push({ key: "delete", label: t("mealCancel"), confirm: t("mealCancelSure"), link: m.orderUrl });
+  const actions: { key: string; label: string; confirm: string; link: string; primary?: boolean; instant?: OrderKind }[] = [];
+  if (m?.orderUrl && m.orderType === "make") actions.push({ key: "make", label: t("mealOrder"), confirm: "", link: m.orderUrl, primary: true, instant: "make" });
+  if (m?.orderUrl && m.orderType === "reorder") actions.push({ key: "reorder", label: t("mealReorder"), confirm: "", link: m.orderUrl, primary: true, instant: "reorder" });
+  if (m?.orderUrl && m.orderType === "delete") actions.push({ key: "delete", label: t("mealCancel"), confirm: "", link: m.orderUrl, instant: "delete" });
   if (m?.burzaUrl) actions.push(m.onBurza
     ? { key: "minus", label: t("mealFromBurza"), confirm: t("mealFromBurzaSure"), link: m.burzaUrl }
     : { key: "plus", label: t("mealToBurza"), confirm: t("mealToBurzaSure"), link: m.burzaUrl });
   if (offer) actions.push({ key: "take", label: t("burzaTake"), confirm: t("burzaTakeSure"), link: offer.url, primary: true });
 
   const run = async (a: (typeof actions)[number]) => {
+    if (a.instant && m) { onOrder(a.instant, m, a.link); return; }
     if (sure !== a.key) { setSure(a.key); return; }
     setBusy(true); setErr("");
     try { await canteenAction(a.link); onDone(); } catch (x) { setErr(errorText(x)); setSure(null); }

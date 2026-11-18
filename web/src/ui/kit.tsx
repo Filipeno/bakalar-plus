@@ -89,8 +89,18 @@ export function Segmented<T extends string | number>({ value, options, onChange,
 
 export const Spinner = ({ small }: { small?: boolean }) => <span class={`spinner ${small ? "small" : ""}`} aria-label={t("loading")} />;
 
+/** Skeleton rows instead of a spinner; nothing is drawn for the first second so quick loads don't flash. */
 export function Loading() {
-  return <div class="center-box"><Spinner /></div>;
+  const [late, setLate] = useState(false);
+  useEffect(() => { const id = setTimeout(() => setLate(true), 1000); return () => clearTimeout(id); }, []);
+  if (!late) return <div class="skel-wait" aria-label={t("loading")} />;
+  return (
+    <div class="skel-list" role="status" aria-label={t("loading")}>
+      {[["40%", "70%"], ["60%", "30%"], ["50%", "60%"], ["40%", "70%"]].map(([a, b]) => (
+        <div class="skel-row"><b class="skel-bar" style={{ width: a }} /><b class="skel-bar" style={{ width: b }} /></div>
+      ))}
+    </div>
+  );
 }
 
 export function Empty({ icon = "info", text, children, small }: { icon?: IconName; text: ComponentChildren; children?: ComponentChildren; small?: boolean }) {

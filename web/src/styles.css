@@ -33,13 +33,13 @@
   --gutter: 18px;
 }
 [data-theme="dark"] {
-  --bg: #161826; --sf: #232532; --sf2: #2d2f3e; --tx: #e9e9ed; --mu: #9397ab; --dv: rgba(233, 233, 237, .1);
+  --bg: #161826; --sf: #232532; --sf2: #2d2f3e; --tx: #e9e9ed; --mu: #9397ab; --dv: rgba(233, 233, 237, .1); --field-bd: #8e90a2;
   --ac: oklch(.68 .125 var(--h)); --at: oklch(.82 .09 var(--h)); --oa: #161826; --wn: #f3c77a; --er: #e58a8a;
   --subj-l: .68; --scrim: rgba(8, 8, 16, .6);
   color-scheme: dark;
 }
 [data-theme="light"] {
-  --bg: #f4f5fa; --sf: #fff; --sf2: #e8eaf3; --tx: #1c1e2b; --mu: #666a7e; --dv: rgba(28, 30, 43, .1);
+  --bg: #f4f5fa; --sf: #f7f7fc; --sf2: #e8eaf3; --tx: #1c1e2b; --mu: #666a7e; --dv: rgba(28, 30, 43, .1); --field-bd: #767a8e;
   --ac: oklch(.52 .14 var(--h)); --at: oklch(.45 .14 var(--h)); --oa: #fff; --wn: #8a5a00; --er: #b53a3a;
   --subj-l: .56; --scrim: rgba(20, 22, 34, .45);
   color-scheme: light;
@@ -218,13 +218,13 @@ p { margin: 0; }
 .progress > span { display: block; height: 100%; background: var(--ac); border-radius: 2px; }
 
 .search {
-  display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--dv); background: var(--sf); color: var(--mu);
+  display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--field-bd); background: var(--sf); color: var(--mu);
 }
 .search input { flex: 1; min-width: 0; border: 0; background: none; padding: 11px 0; outline: none; color: var(--tx); }
 .search.as-btn { width: 100%; padding: 11px 12px; }
 
 .input, .form input, .form textarea, .form select {
-  width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--dv); background: var(--sf); outline: none; color: var(--tx);
+  width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--field-bd); background: var(--sf); outline: none; color: var(--tx);
 }
 .sheet .form input, .sheet .form textarea { background: var(--bg); }
 .form { display: flex; flex-direction: column; gap: 10px; }
@@ -243,6 +243,19 @@ p { margin: 0; }
 }
 .spinner.small { width: 15px; height: 15px; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.skel-wait { height: 200px; }
+.skel-list { display: flex; flex-direction: column; gap: 6px; padding: 4px 0; }
+.skel-row { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 8px; background: var(--sf); min-height: 44px; justify-content: center; }
+.skel-bar { display: block; height: 10px; border-radius: 5px; background: var(--tx); opacity: .16; margin: 6px 0; animation: skel-pulse 1.4s ease-in-out infinite; }
+@keyframes skel-pulse { 50% { opacity: .07; } }
+@media (prefers-reduced-motion: reduce) { .skel-bar { animation: none; } }
+.snackbar {
+  position: fixed; left: 12px; right: 12px; bottom: calc(var(--tab-h) + var(--safe-b) + 12px); z-index: 60;
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px;
+  background: var(--sf2); color: var(--tx); font-size: 14px; box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
+}
+.snackbar.err { color: var(--er); }
+.snackbar-act { background: none; border: 0; color: var(--at); font-weight: 600; padding: 8px 6px; margin: -8px -6px; cursor: pointer; }
 .center-box { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 28px 0; }
 
 .empty { text-align: center; padding: 44px 20px; color: var(--mu); }
@@ -549,7 +562,7 @@ html[data-swipe="prev"] .page { animation: swipe-prev .22s ease-out; }
 .welcome .fine { font-size: 11px; color: var(--mu); }
 .welcome .seg { align-self: flex-start; }
 .pick-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
-.pick { padding: 12px; border-radius: 10px; background: var(--sf); border: 1px solid var(--dv); width: 100%; text-align: left; display: flex; align-items: center; gap: 10px; }
+.pick { padding: 12px; border-radius: 10px; background: var(--sf); border: 1px solid var(--field-bd); width: 100%; text-align: left; display: flex; align-items: center; gap: 10px; }
 .pick.on { border-color: var(--ac); }
 .pick b { display: block; font-size: 14px; font-weight: 500; }
 .pick small { display: block; font-size: 12px; color: var(--mu); overflow-wrap: anywhere; }

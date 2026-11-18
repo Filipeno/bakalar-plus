@@ -39,7 +39,7 @@ const cs = {
   change_substitution: "Suplování", change_room: "Změna učebny", change_removed: "Odpadá", change_added: "Navíc", change_joined: "Spojeno",
   change_absence: "Absence", change_other: "Změna", addFav: "Přidat do oblíbených", removeFav: "Odebrat z oblíbených",
   // grades
-  average: "Průměr", overall: "Celkový průměr", weight: "váha {w}", noGrades: "Zatím žádné známky",
+  average: "Průměr", overall: "Celkový průměr", weight: "váha {w}", hasNote: "Má poznámku", noGrades: "Zatím žádné známky",
   calculator: "Kalkulačka známek", whatIf: "Co kdyby…", addMark: "Přidat známku", target: "Chci mít průměr", needed: "Potřebuješ",
   neededMark: "Známka s vahou {w}:", impossible: "S jednou známkou to nepůjde", alreadyThere: "To už máš 🎉", newAverage: "Nový průměr",
   pointsOnly: "Tento předmět se hodnotí body.", hypothetical: "Přidané (jen v kalkulačce)",
@@ -181,7 +181,7 @@ const en: Dict = {
   room: "Room", subject: "Subject", openTimetable: "Timetable: {x}", cancelled: "Cancelled",
   change_substitution: "Substitution", change_room: "Room change", change_removed: "Cancelled", change_added: "Extra", change_joined: "Merged",
   change_absence: "Absence", change_other: "Change", addFav: "Add to favourites", removeFav: "Remove from favourites",
-  average: "Average", overall: "Overall average", weight: "weight {w}", noGrades: "No grades yet",
+  average: "Average", overall: "Overall average", weight: "weight {w}", hasNote: "Has a note", noGrades: "No grades yet",
   calculator: "Grade calculator", whatIf: "What if…", addMark: "Add a grade", target: "Target average", needed: "You need",
   neededMark: "A grade with weight {w}:", impossible: "Not possible with one grade", alreadyThere: "You're already there 🎉", newAverage: "New average",
   pointsOnly: "This subject is graded with points.", hypothetical: "Added (calculator only)",

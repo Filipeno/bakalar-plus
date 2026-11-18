@@ -7,6 +7,7 @@ import { http, NetError } from "./net";
 import type { Change, Day, Hour, Lesson, Term, Week } from "./model";
 import { classifyChange, } from "./public";
 import { hhmm, toMin } from "./model";
+import { mapMark, markValue, type Mark } from "./marks";
 
 export interface UserInfo {
   uid: string;
@@ -188,39 +189,16 @@ function normalizeApiWeek(j: any, term: Term): Week {
 
 // ---- grades ----
 
-export interface Mark {
-  id: string;
-  text: string;          // what to show: "1", "2-", "8/10", "A"
-  value: number | null;  // numeric value for averages (1-5), null if it doesn't count
-  weight: number;
-  caption: string;
-  theme: string;
-  date: string;          // ISO
-  isNew: boolean;
-  points?: { got: number; max: number };
-}
+export type { Mark };
+export { markValue };
 export interface SubjectMarks { id: string; abbrev: string; name: string; average: string; marks: Mark[]; pointsOnly: boolean; temporary: string }
-
-export function markValue(text: string): number | null {
-  const m = /^([1-5])(-)?$/.exec(text.trim());
-  return m ? +m[1] + (m[2] ? 0.5 : 0) : null;
-}
 
 export async function getMarks(): Promise<SubjectMarks[]> {
   const j = await api<any>("/api/3/marks");
   return (j.Subjects ?? []).map((s: any) => ({
     id: s.Subject?.Id?.trim() ?? "", abbrev: s.Subject?.Abbrev?.trim() ?? "", name: s.Subject?.Name ?? "",
     average: String(s.AverageText ?? "").trim(), pointsOnly: !!s.PointsOnly, temporary: s.TemporaryMark ?? "",
-    marks: (s.Marks ?? []).map((m: any): Mark => {
-      const text = String(m.MarkText || m.PointsText || m.VerbalEvaluation || "?").trim();
-      const got = parseFloat(m.PointsText), max = parseFloat(m.MaxPoints);
-      return {
-        id: String(m.Id), text: m.MaxPoints && !m.MarkText ? `${m.PointsText}/${m.MaxPoints}` : text,
-        value: markValue(m.MarkText ?? ""), weight: Number(m.Weight) || 1,
-        caption: m.Caption ?? "", theme: m.Theme ?? "", date: String(m.MarkDate ?? m.EditDate ?? "").slice(0, 10),
-        isNew: !!m.IsNew, points: !isNaN(got) && !isNaN(max) && max > 0 ? { got, max } : undefined,
-      };
-    }).sort((a: Mark, b: Mark) => b.date.localeCompare(a.date)),
+    marks: (s.Marks ?? []).map(mapMark    ).sort((a: Mark, b: Mark) => b.date.localeCompare(a.date)),
   }));
 }
 

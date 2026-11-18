@@ -387,6 +387,13 @@ p { margin: 0; }
 .mark.heavy { opacity: 1; }
 .mark.new { box-shadow: 0 0 0 1px var(--ac); opacity: 1; }
 .mark.big { min-width: 34px; font-size: 15px; padding: 5px 6px; opacity: 1; }
+.mark { position: relative; }
+/* tiny speech bubble in the chip's lower-right corner = the grade has a teacher's note */
+.mark-note { position: absolute; right: -3px; bottom: -3px; width: 8px; height: 7px; border-radius: 3px 3px 3px 0; background: var(--ac); box-shadow: 0 0 0 1.5px var(--sf); }
+[data-look="expressive"] .mark-note { box-shadow: 0 0 0 1.5px var(--sfc, var(--sf)); }
+.row.with-note { flex-wrap: wrap; }
+.mark-note-box { flex: 0 0 100%; margin-top: 2px; padding: 8px 10px; border-radius: 8px; background: color-mix(in oklab, var(--ac) 14%, transparent); color: var(--tx); font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap; }
+.mark-note-box b { color: var(--mu); font-weight: 600; }
 .marks .calc-link { margin-left: auto; font-size: 11px; color: var(--at); display: flex; gap: 3px; align-items: center; }
 .calc-box { margin-top: 18px; padding: 14px; border-radius: 10px; background: var(--sf); }
 .calc-box .lead { font-size: 12px; color: var(--mu); }

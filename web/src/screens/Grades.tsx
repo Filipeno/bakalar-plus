@@ -62,7 +62,7 @@ export function Grades() {
               </span>
               <span class="marks">
                 {s.marks.slice(0, 12).map((m) => (
-                  <span class={`mark ${mixed && m.weight >= maxW ? "heavy" : ""} ${m.isNew ? "new" : ""}`}>{m.text}</span>
+                  <span class={`mark ${mixed && m.weight >= maxW ? "heavy" : ""} ${m.isNew ? "new" : ""}`}>{m.text}{m.note && <span class="mark-note" role="img" title={t("hasNote")} aria-label={t("hasNote")} />}</span>
                 ))}
                 <span class="calc-link"><Icon name="calculator" size={13} />{t("calc")}</span>
               </span>
@@ -158,13 +158,14 @@ function roundMark(x: number): string {
 
 function MarkRow({ m, hypo }: { m: Mark; hypo?: boolean }) {
   return (
-    <div class={`row ${hypo ? "hypo" : ""}`}>
+    <div class={`row ${hypo ? "hypo" : ""} ${m.note ? "with-note" : ""}`}>
       <span class={`mark big ${m.isNew ? "new" : ""}`}>{m.text}</span>
       <span class="row-main">
         <span class="row-title">{m.caption || m.theme || "—"}</span>
         <span class="row-sub">{[m.date && fmtDate(m.date), t("weight", { w: m.weight }), m.theme !== m.caption ? m.theme : ""].filter(Boolean).join(" · ")}</span>
       </span>
       {m.isNew && <span class="tag new">NEW</span>}
+      {m.note && <span class="mark-note-box"><b>{t("note")}:</b> {m.note}</span>}
     </div>
   );
 }

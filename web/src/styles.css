@@ -228,11 +228,14 @@ p { margin: 0; }
 }
 .sheet .form input, .sheet .form textarea { background: var(--bg); }
 .form { display: flex; flex-direction: column; gap: 10px; }
-.form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--mu); }
+.form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--mu); }
 .form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .form textarea { resize: vertical; }
-.lock-note { display: flex; gap: 8px; font-size: 12px; color: var(--mu); line-height: 1.5; }
+.lock-note { display: flex; gap: 8px; font-size: 13px; color: var(--mu); line-height: 1.5; }
 .lock-note .icon { color: var(--at); }
+.step-bar { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; font-size: 13px; color: var(--mu); }
+.step-bar-track { flex: 1; height: 4px; border-radius: 2px; background: var(--dv); overflow: hidden; }
+.step-bar-fill { height: 100%; background: var(--at); border-radius: 2px; transition: width .2s; }
 
 .spinner {
   width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--sf2); border-top-color: var(--ac);
@@ -267,7 +270,7 @@ p { margin: 0; }
 .sheet-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
 .sheet-head h3 { font-size: 22px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .sheet-head .icon-btn { margin: -4px -6px 0 0; }
-.sheet-sub { font-size: 12px; color: var(--mu); margin-top: 4px; }
+.sheet-sub { font-size: 13px; color: var(--mu); margin-top: 4px; }
 .sheet-label { margin-top: 14px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ac); }
 .sheet-val { font-size: 14px; margin-top: 3px; }
 .sheet-body > .search { margin-bottom: 10px; }
@@ -402,7 +405,7 @@ p { margin: 0; }
 .stepper { display: flex; align-items: center; gap: 14px; }
 .stepper button { width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--dv); display: flex; align-items: center; justify-content: center; }
 .stepper b { font-size: 22px; font-weight: 500; width: 30px; text-align: center; }
-.field-label { font-size: 11px; color: var(--mu); margin: 16px 0 6px; }
+.field-label { font-size: 13px; color: var(--mu); margin: 16px 0 6px; }
 .row.hypo { box-shadow: inset 0 0 0 1px var(--dv); background: transparent; }
 
 /* ---------------- calendar ---------------- */

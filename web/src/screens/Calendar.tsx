@@ -203,12 +203,12 @@ function EntryEditor({ entry, onClose, onSaved }: { entry: Partial<ClassEntry> |
       <form class="form" onSubmit={save} style={{ marginTop: "14px" }}>
         <Segmented<EntryKind> value={(cur.kind as EntryKind) ?? "test"} onChange={(k) => set({ kind: k })}
           options={(["test", "homework", "event", "other"] as EntryKind[]).map((k) => ({ v: k, label: t(`kind_${k}` as TKey) }))} />
-        <input required maxLength={120} placeholder={t("title")} aria-label={t("title")} value={cur.title ?? ""} onInput={(e) => set({ title: (e.target as HTMLInputElement).value })} />
+        <label>{t("title")}<input required maxLength={120} value={cur.title ?? ""} onInput={(e) => set({ title: (e.target as HTMLInputElement).value })} /></label>
         <div class="form-2">
           <label>{t("date")}<input type="date" required value={cur.date ?? ""} onInput={(e) => set({ date: (e.target as HTMLInputElement).value })} /></label>
           <label>{t("time")}<input type="time" value={cur.time ?? ""} onInput={(e) => set({ time: (e.target as HTMLInputElement).value })} /></label>
         </div>
-        <textarea rows={3} maxLength={1000} placeholder={t("note")} aria-label={t("note")} value={cur.note ?? ""} onInput={(e) => set({ note: (e.target as HTMLTextAreaElement).value })} />
+        <label>{t("note")}<textarea rows={3} maxLength={1000} value={cur.note ?? ""} onInput={(e) => set({ note: (e.target as HTMLTextAreaElement).value })} /></label>
         <p class="hint">{t("visibleClass")}</p>
         {err && <p class="hint err-text">{err}</p>}
         <button class="btn block" disabled={busy || !cur.title?.trim()}>{busy ? <Spinner small /> : t("save")}</button>

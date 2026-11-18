@@ -23,6 +23,15 @@ declare const __APP_VERSION__: string;
 
 // ---------------- onboarding ----------------
 
+function StepBar({ n }: { n: number }) {
+  return (
+    <div class="step-bar" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={n} aria-label={t("stepOf", { n, total: 4 })}>
+      <div class="step-bar-track"><div class="step-bar-fill" style={{ width: `${n * 25}%` }} /></div>
+      <span>{t("stepOf", { n, total: 4 })}</span>
+    </div>
+  );
+}
+
 function StepBack({ onClick }: { onClick: () => void }) {
   return <button class="welcome-back" onClick={onClick} aria-label={t("back")}><Icon name="caret-left" size={22} /><span>{t("back")}</span></button>;
 }
@@ -58,6 +67,7 @@ export function Welcome() {
     return (
       <div class="welcome">
         <StepBack onClick={() => setStep("hello")} />
+        <StepBar n={2} />
         <h2>{t("pickSchool")}</h2>
         <p class="sub">{t("pickSchoolSub")}</p>
         <SchoolPicker onPicked={(d) => { setDir(d); setStep("login"); }} />
@@ -68,6 +78,7 @@ export function Welcome() {
     return (
       <div class="welcome">
         <StepBack onClick={() => setStep("school")} />
+        <StepBar n={3} />
         <h2>{t("loginTitle")}</h2>
         <p class="sub">{settings.value.school?.name}</p>
         <LoginForm onDone={finish} />
@@ -78,6 +89,7 @@ export function Welcome() {
   return (
     <div class="welcome">
       <StepBack onClick={() => setStep("login")} />
+        <StepBar n={4} />
       <h2>{t("pickClass")}</h2>
       <p class="sub">{t("pickClassHint")}</p>
       <div class="chips">
@@ -85,7 +97,7 @@ export function Welcome() {
           <button class={`chip big ${cls?.id === c.id ? "on" : ""}`} onClick={() => setCls(c)}>{c.name}</button>
         ))}
       </div>
-      <button class="btn block" style={{ marginTop: "24px" }} disabled={!cls} onClick={() => { patchSettings({ myTarget: cls }); finish(); }}>{t("done")}</button>
+      <button class="btn block" style={{ marginTop: "24px" }} disabled={!cls} onClick={() => { patchSettings({ myTarget: cls }); finish(); }}>{t("showTimetable")}</button>
     </div>
   );
 }
@@ -207,10 +219,15 @@ export function LoginForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form class="form" onSubmit={submit}>
-      <input autoComplete="username" autoCapitalize="off" autoCorrect="off" required placeholder={t("username")} aria-label={t("username")}
-        value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} />
-      <input type="password" autoComplete="current-password" required placeholder={t("password")} aria-label={t("password")}
-        value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} />
+      <label>{t("username")}
+        <input autoComplete="username" autoCapitalize="off" autoCorrect="off" required
+          value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} />
+        <span class="hint">{t("usernameHint")}</span>
+      </label>
+      <label>{t("password")}
+        <input type="password" autoComplete="current-password" required
+          value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} />
+      </label>
       <div class="lock-note" style={{ margin: "4px 0" }}>
         <Icon name="lock-key" size={18} />
         <span>
@@ -472,8 +489,8 @@ function WebPush() {
         <form class="form" onSubmit={enable} style={{ marginTop: "10px" }}>
           <p class="hint">{t("pushServerNote")}</p>
           <p class="hint"><b>{t("pushLoginAgain")}</b></p>
-          <input autoComplete="username" autoCapitalize="off" autoCorrect="off" required placeholder={t("username")} aria-label={t("username")} value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} />
-          <input type="password" autoComplete="current-password" required placeholder={t("password")} aria-label={t("password")} value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} />
+          <label>{t("username")}<input autoComplete="username" autoCapitalize="off" autoCorrect="off" required value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} /></label>
+          <label>{t("password")}<input type="password" autoComplete="current-password" required value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} /></label>
           {msg && <p class="hint err-text">{msg}</p>}
           <button class="btn block" disabled={busy}>{busy ? <Spinner small /> : t("pushOn")}</button>
         </form>

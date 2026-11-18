@@ -297,7 +297,7 @@ function CabinetSheet({ open, teacher, room, onClose, onSaved }: {
   return (
     <Sheet open={open} onClose={onClose} title={t("cabinet")} sub={teacher.name}>
       <form class="form" style={{ marginTop: "14px" }} onSubmit={(e) => { e.preventDefault(); if (v.trim()) save(v); }}>
-        <input maxLength={40} placeholder={t("cabinetPh")} aria-label={t("cabinet")} value={v} onInput={(e) => setV((e.target as HTMLInputElement).value)} />
+        <label>{t("cabinet")}<input maxLength={40} placeholder={t("cabinetPh")} value={v} onInput={(e) => setV((e.target as HTMLInputElement).value)} /></label>
         <p class="hint">{t("cabinetHint")}</p>
         {err && <p class="hint err-text">{err}</p>}
         <div class="btn-row">

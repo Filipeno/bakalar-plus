@@ -23,6 +23,10 @@ export function markValue(text: string): number | null {
 const NOTE_FIELDS = ["Note", "Notice", "TeacherNote", "Comment", "Remark", "Poznamka", "MarkNote", "MarkComment"];
 
 export function markNote(m: any): string | undefined {
+  // Confirmed on the school's Bakaláři (2026-11-18): the teacher's text is "Slovní hodnocení" = VerbalEvaluation.
+  // When the grade also has a mark/points, that text is the note; otherwise it is already the shown grade.
+  const verbal = typeof m?.VerbalEvaluation === "string" ? m.VerbalEvaluation.trim() : "";
+  if (verbal && (m.MarkText || m.PointsText)) return verbal;
   for (const k of NOTE_FIELDS) {
     const v = m?.[k];
     if (typeof v === "string" && v.trim()) return v.trim();

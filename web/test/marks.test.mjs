@@ -18,4 +18,9 @@ assert.equal(markNote({ Note: "", TeacherNote: "y" }), "y");
 // points-only grade still maps
 m = mapMark({ Id: "B", MarkText: "", PointsText: "8", MaxPoints: 10, Note: "ok" });
 assert.equal(m.text, "8/10"); assert.deepEqual(m.points, { got: 8, max: 10 }); assert.equal(m.note, "ok");
+// "Slovní hodnocení" (VerbalEvaluation) next to a mark is the note
+assert.equal(mapMark({ ...base, MarkText: "1", VerbalEvaluation: "  Velmi zdarile  " }).note, "Velmi zdarile");
+// verbal-only grade: the text IS the grade, not a note
+m = mapMark({ Id: "C", MarkText: "", VerbalEvaluation: "Splnil" });
+assert.equal(m.text, "Splnil"); assert.equal(m.note, undefined);
 console.log("marks mapping ok");

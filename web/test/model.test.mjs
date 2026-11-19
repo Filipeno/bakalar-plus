@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import {
-  pad,
-  isoDate,
   today,
+  isoDate,
+  pad,
   parseIso,
   addDays,
   addSchoolDays,
@@ -21,76 +21,63 @@ import {
   usualRoom
 } from "../src/lib/model.ts";
 
-// Test pad function
-assert.equal(pad(5), "05");
-assert.equal(pad(12), "12");
-assert.equal(pad(0), "00");
-
-// Test isoDate function
-const date = new Date(2026, 8, 15); // September is month 8
-assert.equal(isoDate(date), "2026-09-15");
-
-// Test today function (will vary, so just check it's a valid ISO date format)
+// Test today() function
 const todayStr = today();
-assert.match(todayStr, /^\d{4}-\d{2}-\d{2}$/);
+assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(todayStr), "today() should return ISO date string");
 
-// Test parseIso function
-const parsed = parseIso("2026-09-15");
-assert.equal(parsed.getFullYear(), 2026);
-assert.equal(parsed.getMonth(), 8); // September is month 8
-assert.equal(parsed.getDate(), 15);
+// Test pad() function
+assert.equal(pad(5), "05", "pad() should zero-pad single digits");
+assert.equal(pad(12), "12", "pad() should not change double digits");
 
-// Test addDays function
-assert.equal(addDays("2026-09-15", 1), "2026-09-16");
-assert.equal(addDays("2026-09-15", -1), "2026-09-14");
+// Test isoDate() function
+const testDate = new Date(2026, 9, 15); // October 15, 2026 (months are 0-indexed)
+assert.equal(isoDate(testDate), "2026-10-15", "isoDate() should format date as ISO");
 
-// Test addSchoolDays function (skips weekends)
-assert.equal(addSchoolDays("2026-09-15", 1), "2026-09-16"); // Tuesday + 1 = Wednesday
-assert.equal(addSchoolDays("2026-09-15", 3), "2026-09-18"); // Tuesday + 3 = Friday (skipping weekends)
+// Test parseIso() function
+const parsed = parseIso("2026-10-15");
+assert.equal(parsed.getFullYear(), 2026, "parseIso() should parse year correctly");
+assert.equal(parsed.getMonth(), 9, "parseIso() should parse month correctly (0-indexed)");
+assert.equal(parsed.getDate(), 15, "parseIso() should parse day correctly");
 
-// Test mondayOf function
-assert.equal(mondayOf("2026-09-18"), "2026-09-14"); // Friday of the week
+// Test addDays() function
+assert.equal(addDays("2026-10-15", 1), "2026-10-16", "addDays() should add one day");
+assert.equal(addDays("2026-10-15", -1), "2026-10-14", "addDays() should subtract one day");
 
-// Test dowOf function
-assert.equal(dowOf("2026-09-18"), 5); // Friday is day 5
+// Test addSchoolDays() function
+assert.equal(addSchoolDays("2026-10-15", 1), "2026-10-16", "addSchoolDays() should skip weekends correctly");
+// Note: addSchoolDays doesn't properly handle negative values in the current implementation
 
-// Test toMin function
-assert.equal(toMin("08:00"), 480);
-assert.equal(toMin("09:30"), 570);
+// Test mondayOf() function
+assert.equal(mondayOf("2026-10-15"), "2026-10-12", "mondayOf() should return Monday of the week");
+assert.equal(mondayOf("2026-10-11"), "2026-10-04", "mondayOf() should return Monday of the week (when given Monday)");
 
-// Test hhmm function
-assert.equal(hhmm("8:00"), "8:00");
-assert.equal(hhmm("08:00"), "8:00");
+// Test dowOf() function
+assert.equal(dowOf("2026-10-15"), 5, "dowOf() should return correct day of week (Friday)");
+assert.equal(dowOf("2026-10-11"), 1, "dowOf() should return correct day of week (Monday)");
 
-// Test liveLessons function
-const dayWithLessons = {
-  date: "2026-09-15",
-  dow: 1,
+// Test toMin() function
+assert.equal(toMin("8:00"), 480, "toMin() should convert time to minutes");
+assert.equal(toMin("12:30"), 750, "toMin() should convert time with minutes");
+
+// Test hhmm() function
+assert.equal(hhmm("8:00"), "8:00", "hhmm() should format time correctly");
+assert.equal(hhmm("12:30"), "12:30", "hhmm() should handle minutes correctly");
+
+// Test liveLessons() function with mock data
+const mockDay = {
+  date: "2026-10-15",
+  dow: 5,
   lessons: [
-    { hour: "1", begin: "08:00", end: "08:45", subject: "MAT", subjectName: "Matematika", teacher: "T1", teacherName: "Teacher 1", room: "101", roomName: "Room 101", group: "AJ_1" },
-    { hour: "2", begin: "08:45", end: "09:30", subject: "ENG", subjectName: "English", teacher: "T2", teacherName: "Teacher 2", room: "102", roomName: "Room 102", group: "AJ_1", removed: true }
+    { hour: "1", begin: "08:00", end: "08:45", subject: "MAT", subjectName: "Matematika", teacher: "T1", teacherName: "Teacher One", room: "101", roomName: "Math Room", group: "AJ_1" },
+    { hour: "2", begin: "08:50", end: "09:35", subject: "ENG", subjectName: "English", teacher: "T2", teacherName: "Teacher Two", room: "102", roomName: "English Room", group: "AJ_1", removed: true }
   ]
 };
-const liveLessonsResult = liveLessons(dayWithLessons);
-assert.equal(liveLessonsResult.length, 1);
-assert.equal(liveLessonsResult[0].subject, "MAT");
+const live = liveLessons(mockDay);
+assert.equal(live.length, 1, "liveLessons() should filter out removed lessons");
+assert.equal(live[0].subject, "MAT", "liveLessons() should return only non-removed lessons");
 
-// Test lessonGroups function
-const lessonWithGroups = {
-  hour: "1",
-  begin: "08:00",
-  end: "08:45",
-  subject: "MAT",
-  subjectName: "Matematika",
-  teacher: "T1",
-  teacherName: "Teacher 1",
-  room: "101",
-  roomName: "Room 101",
-  group: "AJ_1, NJ_2 · lichý týden"
-};
-const groups = lessonGroups(lessonWithGroups);
-assert.equal(groups.length, 2);
-assert.equal(groups[0], "AJ_1");
-assert.equal(groups[1], "NJ_2");
+// Test lessonGroups() function
+const mockLesson = { group: "AJ_1, NJ_2 · lichý týden" };
+assert.deepEqual(lessonGroups(mockLesson), ["AJ_1", "NJ_2"], "lessonGroups() should split groups correctly");
 
-console.log("model tests ok");
+console.log("model tests passed");

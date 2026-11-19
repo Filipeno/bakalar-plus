@@ -1,10 +1,93 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
-  <rect width="512" height="512" rx="112" fill="url(#g)"/>
-  <rect x="112" y="136" width="288" height="256" rx="36" fill="#fff"/>
-  <rect x="112" y="136" width="288" height="64" rx="32" fill="#e0e7ff"/>
-  <g fill="#6366f1"><rect x="148" y="232" width="60" height="44" rx="10"/><rect x="226" y="232" width="60" height="44" rx="10" opacity=".55"/><rect x="304" y="232" width="60" height="44" rx="10" opacity=".3"/>
-  <rect x="148" y="300" width="60" height="44" rx="10" opacity=".3"/><rect x="226" y="300" width="60" height="44" rx="10"/></g>
-  <circle cx="352" cy="344" r="62" fill="#f59e0b" stroke="#fff" stroke-width="14"/>
-  <path d="M352 314v60M322 344h60" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="bp-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="45%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <radialGradient id="bp-glow" cx="20%" cy="15%" r="75%">
+      <stop offset="0%" stop-color="#a5b4fc" stop-opacity="0.45"/>
+      <stop offset="50%" stop-color="#818cf8" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bp-card" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+    <linearGradient id="bp-header" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ede9fe"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <linearGradient id="bp-active" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="bp-badge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <filter id="bp-card-shadow" x="-20%" y="-15%" width="140%" height="145%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#1e1b4b" flood-opacity="0.42"/>
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#1e1b4b" flood-opacity="0.2"/>
+    </filter>
+    <filter id="bp-badge-shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#7c2d12" flood-opacity="0.38"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.2"/>
+    </filter>
+    <clipPath id="bp-card-clip">
+      <rect x="106" y="112" width="300" height="288" rx="40"/>
+    </clipPath>
+  </defs>
+
+  <rect width="512" height="512" rx="114" fill="url(#bp-bg)"/>
+  <rect width="512" height="512" rx="114" fill="url(#bp-glow)"/>
+  <rect x="2" y="2" width="508" height="508" rx="112" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.22"/>
+
+  <g filter="url(#bp-card-shadow)">
+    <rect x="106" y="112" width="300" height="288" rx="40" fill="url(#bp-card)"/>
+    <g clip-path="url(#bp-card-clip)">
+      <rect x="106" y="112" width="300" height="74" fill="url(#bp-header)"/>
+      <line x1="106" y1="186" x2="406" y2="186" stroke="#c7d2fe" stroke-width="1.5" stroke-opacity="0.6"/>
+      <rect x="144" y="142" width="54" height="14" rx="7" fill="#6366f1" fill-opacity="0.85"/>
+      <rect x="210" y="145" width="22" height="8" rx="4" fill="#a5b4fc" fill-opacity="0.6"/>
+      <rect x="242" y="145" width="22" height="8" rx="4" fill="#a5b4fc" fill-opacity="0.6"/>
+      <rect x="274" y="145" width="22" height="8" rx="4" fill="#a5b4fc" fill-opacity="0.6"/>
+    </g>
+    <rect x="106.5" y="112.5" width="299" height="287" rx="39.5" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.8"/>
+
+    <!-- Row 1 -->
+    <rect x="140" y="212" width="66" height="50" rx="14" fill="url(#bp-active)"/>
+    <rect x="148" y="222" width="24" height="6" rx="3" fill="#ffffff" fill-opacity="0.9"/>
+    <rect x="148" y="234" width="42" height="5" rx="2.5" fill="#c7d2fe" fill-opacity="0.75"/>
+    
+    <rect x="222" y="212" width="66" height="50" rx="14" fill="#f1f5f9"/>
+    <rect x="222" y="212" width="66" height="50" rx="14" fill="#6366f1" fill-opacity="0.14"/>
+    <rect x="232" y="224" width="36" height="6" rx="3" fill="#6366f1" fill-opacity="0.45"/>
+    <rect x="232" y="236" width="24" height="5" rx="2.5" fill="#94a3b8" fill-opacity="0.4"/>
+
+    <rect x="304" y="212" width="66" height="50" rx="14" fill="#f8fafc"/>
+    <rect x="304" y="212" width="66" height="50" rx="14" fill="#6366f1" fill-opacity="0.08"/>
+    <rect x="314" y="224" width="30" height="6" rx="3" fill="#6366f1" fill-opacity="0.3"/>
+    <rect x="314" y="236" width="20" height="5" rx="2.5" fill="#94a3b8" fill-opacity="0.3"/>
+
+    <!-- Row 2 -->
+    <rect x="140" y="280" width="66" height="50" rx="14" fill="#f8fafc"/>
+    <rect x="140" y="280" width="66" height="50" rx="14" fill="#6366f1" fill-opacity="0.08"/>
+    <rect x="150" y="292" width="32" height="6" rx="3" fill="#6366f1" fill-opacity="0.3"/>
+    <rect x="150" y="304" width="22" height="5" rx="2.5" fill="#94a3b8" fill-opacity="0.3"/>
+
+    <rect x="222" y="280" width="66" height="50" rx="14" fill="#f1f5f9"/>
+    <rect x="222" y="280" width="66" height="50" rx="14" fill="#6366f1" fill-opacity="0.18"/>
+    <rect x="232" y="292" width="40" height="6" rx="3" fill="#6366f1" fill-opacity="0.5"/>
+    <rect x="232" y="304" width="26" height="5" rx="2.5" fill="#94a3b8" fill-opacity="0.4"/>
+  </g>
+
+  <!-- Glowing Radiant "+" Badge -->
+  <g filter="url(#bp-badge-shadow)">
+    <circle cx="348" cy="342" r="60" fill="#ffffff"/>
+    <circle cx="348" cy="342" r="53" fill="url(#bp-badge)"/>
+    <path d="M 302 336 A 48 48 0 0 1 394 336" fill="none" stroke="#fef08a" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.7"/>
+    <path d="M348 314 V370 M320 342 H376" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  </g>
 </svg>

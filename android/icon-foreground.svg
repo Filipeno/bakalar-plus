@@ -1,11 +1,62 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
-  <!-- Adaptive icon foreground: keep everything inside the central 66dp safe zone (21..87). -->
-  <rect x="29" y="32" width="50" height="44" rx="7" fill="#fff"/>
-  <rect x="29" y="32" width="50" height="11" rx="5.5" fill="#e0e7ff"/>
-  <g fill="#6366f1">
-    <rect x="35" y="49" width="10" height="8" rx="2"/><rect x="49" y="49" width="10" height="8" rx="2" opacity=".55"/><rect x="63" y="49" width="10" height="8" rx="2" opacity=".3"/>
-    <rect x="35" y="61" width="10" height="8" rx="2" opacity=".3"/><rect x="49" y="61" width="10" height="8" rx="2"/>
+  <defs>
+    <linearGradient id="af-card" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+    <linearGradient id="af-header" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ede9fe"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <linearGradient id="af-active" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="af-badge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="60%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <clipPath id="af-card-clip">
+      <rect x="27" y="28" width="53" height="50" rx="7"/>
+    </clipPath>
+  </defs>
+
+  <!-- Floating Schedule Card -->
+  <rect x="27" y="28" width="53" height="50" rx="7" fill="url(#af-card)"/>
+  
+  <g clip-path="url(#af-card-clip)">
+    <rect x="27" y="28" width="53" height="13" fill="url(#af-header)"/>
+    <rect x="33.5" y="33" width="9.5" height="2.8" rx="1.4" fill="#6366f1"/>
+    <rect x="45" y="33.5" width="4" height="1.8" rx="0.9" fill="#a5b4fc"/>
+    <rect x="50.5" y="33.5" width="4" height="1.8" rx="0.9" fill="#a5b4fc"/>
+    <rect x="56" y="33.5" width="4" height="1.8" rx="0.9" fill="#a5b4fc"/>
   </g>
-  <circle cx="72" cy="69" r="11.5" fill="#f59e0b" stroke="#fff" stroke-width="2.6"/>
-  <path d="M72 63.5v11M66.5 69h11" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Row 1 -->
+  <rect x="33" y="45" width="11.5" height="9" rx="2.5" fill="url(#af-active)"/>
+  <rect x="34.5" y="47" width="4.5" height="1.2" rx="0.6" fill="#ffffff"/>
+  <rect x="34.5" y="49.2" width="7" height="1" rx="0.5" fill="#c7d2fe"/>
+
+  <rect x="47.5" y="45" width="11.5" height="9" rx="2.5" fill="#f1f5f9"/>
+  <rect x="47.5" y="45" width="11.5" height="9" rx="2.5" fill="#6366f1" fill-opacity="0.14"/>
+  <rect x="49" y="47" width="6.5" height="1.2" rx="0.6" fill="#6366f1" fill-opacity="0.5"/>
+
+  <rect x="62" y="45" width="11.5" height="9" rx="2.5" fill="#f8fafc"/>
+  <rect x="62" y="45" width="11.5" height="9" rx="2.5" fill="#6366f1" fill-opacity="0.08"/>
+  <rect x="63.5" y="47" width="5.5" height="1.2" rx="0.6" fill="#6366f1" fill-opacity="0.3"/>
+
+  <!-- Row 2 -->
+  <rect x="33" y="57" width="11.5" height="9" rx="2.5" fill="#f8fafc"/>
+  <rect x="33" y="57" width="11.5" height="9" rx="2.5" fill="#6366f1" fill-opacity="0.08"/>
+  <rect x="34.5" y="59" width="5.5" height="1.2" rx="0.6" fill="#6366f1" fill-opacity="0.3"/>
+
+  <rect x="47.5" y="57" width="11.5" height="9" rx="2.5" fill="#f1f5f9"/>
+  <rect x="47.5" y="57" width="11.5" height="9" rx="2.5" fill="#6366f1" fill-opacity="0.18"/>
+  <rect x="49" y="59" width="7" height="1.2" rx="0.6" fill="#6366f1" fill-opacity="0.5"/>
+
+  <!-- Glowing Radiant Plus Badge -->
+  <circle cx="70.5" cy="69" r="11.5" fill="#ffffff"/>
+  <circle cx="70.5" cy="69" r="9.8" fill="url(#af-badge)"/>
+  <path d="M70.5 64v10 M65.5 69h10" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>
 </svg>

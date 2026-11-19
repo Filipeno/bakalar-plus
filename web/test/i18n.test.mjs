@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { t, langSetting, lang, dayShort, dayLong, fmtDate, cap, fmtRelDay } from "../src/lib/i18n.ts";
 
+// Set language to Czech for consistent testing
+langSetting.value = "cs";
+
 // Test basic translation function with Czech (default)
 assert.equal(t("appName"), "Bakaláři+");
 assert.equal(t("loading"), "Načítám…");
@@ -22,12 +25,12 @@ langSetting.value = "en";
 assert.equal(t("updatedAt", { t: "10:30" }), "Updated 10:30");
 assert.equal(t("updatedAt", { t: "14:15" }), "Updated 14:15");
 
-// Test dayShort function
+// Test dayShort function with Czech
 assert.equal(dayShort(1), "po");
 assert.equal(dayShort(3), "st");
 assert.equal(dayShort(7), "ne");
 
-// Test dayLong function
+// Test dayLong function with Czech
 assert.equal(dayLong(1), "pondělí");
 assert.equal(dayLong(3), "středa");
 assert.equal(dayLong(7), "neděle");

@@ -1,44 +1,44 @@
+// The lib imports siblings without ".ts" (Vite style) and uses TS syntax node cannot strip
+// (parameter properties, import.meta.env), so a loader hook resolves them and transpiles .ts with the repo's Vite.
+import { register } from "node:module";
 import assert from "node:assert/strict";
-import { CanteenAuthError, guessCanteenUrl, cleanUrl, parsePublicMenu, parseMenu, parseAccount, parseBurza } from "../src/lib/canteen.ts";
+const hook = `
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+const { transformWithOxc } = await import(${JSON.stringify(import.meta.resolve("vite"))});
+export async function resolve(s, c, n) {
+  try { return await n(s, c); }
+  catch (e) { if (s.startsWith(".") && !s.endsWith(".ts")) return n(s + ".ts", c); throw e; }
+}
+export async function load(url, c, n) {
+  if (!url.endsWith(".ts")) return n(url, c);
+  const f = fileURLToPath(url);
+  const r = await transformWithOxc(readFileSync(f, "utf8"), f, { lang: "ts" });
+  return { format: "module", source: "import.meta.env ??= {}; " + r.code, shortCircuit: true };
+}`;
+register("data:text/javascript," + encodeURIComponent(hook));
 
-// Test CanteenAuthError class
-const error = new CanteenAuthError();
-assert.ok(error instanceof Error);
-assert.equal(error.message, "canteen login needed");
+// canteen.ts reads localStorage when loaded; only its pure exports are tested here (the parsers need DOMParser)
+const store = new Map();
+globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+const { CanteenAuthError, guessCanteenUrl, cleanUrl } = await import("../src/lib/canteen.ts");
 
-// Test guessCanteenUrl function with various inputs
+// cleanUrl: trims, drops trailing slashes, forces https, adds a scheme
+assert.equal(cleanUrl("  https://jidelna.skola.cz/// "), "https://jidelna.skola.cz");
+assert.equal(cleanUrl("http://jidelna.skola.cz/"), "https://jidelna.skola.cz");
+assert.equal(cleanUrl("HTTP://x.cz"), "https://x.cz");
+assert.equal(cleanUrl("jidelna.skola.cz"), "https://jidelna.skola.cz");
+assert.equal(cleanUrl("https://x.cz/app/"), "https://x.cz/app");
+
+// guessCanteenUrl: replaces the first host label with "jidelna"
 assert.equal(guessCanteenUrl("https://bakalar.trebesin.cz"), "https://jidelna.trebesin.cz");
-assert.equal(guessCanteenUrl("https://school.edu"), "https://jidelna.edu");
-assert.equal(guessCanteenUrl("bakalar.trebesin.cz"), "https://jidelna.trebesin.cz");
+assert.equal(guessCanteenUrl("https://bakalari.gym.skola.cz/bakaweb"), "https://jidelna.gym.skola.cz");
+assert.equal(guessCanteenUrl("https://skola.cz"), "https://jidelna.skola.cz");
+assert.equal(guessCanteenUrl("not a url"), "");
+assert.equal(guessCanteenUrl(""), "");
 
-// Test cleanUrl function with various inputs
-assert.equal(cleanUrl("https://example.com"), "https://example.com");
-assert.equal(cleanUrl("http://example.com"), "https://example.com");
-assert.equal(cleanUrl("example.com"), "https://example.com");
-assert.equal(cleanUrl("example.com/"), "https://example.com");
-
-// Test parsePublicMenu with sample HTML - checking array structure
-const publicMenuHtml = `
-<div class="jidelnicekDen day-2026-12-15">
-  <div class="container">
-    <span class="smallBoldTitle">Oběd 1</span>
-    <div class="jidelnicekItem">
-      <span class="textGrey">1, 3</span>
-      <span>Polévka</span>
-    </div>
-  </div>
-</div>
-`;
-const publicMenu = parsePublicMenu(publicMenuHtml);
-assert.ok(Array.isArray(publicMenu));
-
-// Test parseAccount with sample HTML
-const accountHtml = `
-<div id="Kredit">123.45</div>
-<div id="PoslObj">15. 12. 2026</div>
-`;
-const account = parseAccount(accountHtml);
-assert.equal(account.credit, 123.45);
-assert.equal(account.orderedUntil, "2026-12-15");
-
-console.log("canteen module tests passed");
+// CanteenAuthError
+const e = new CanteenAuthError();
+assert.ok(e instanceof Error);
+assert.equal(e.message, "canteen login needed");
+console.log("canteen ok");

@@ -1,8 +1,5 @@
 import assert from "node:assert/strict";
-import { t, langSetting, lang, dayShort, dayLong, fmtDate, cap, fmtRelDay } from "../src/lib/i18n.ts";
-
-// Set language to Czech for consistent testing
-langSetting.value = "cs";
+import { t, langSetting, dayShort, dayLong, fmtDate, cap, fmtRelDay } from "../src/lib/i18n.ts";
 
 // Test basic translation function with Czech (default)
 assert.equal(t("appName"), "Bakaláři+");
@@ -15,8 +12,10 @@ assert.equal(t("appName"), "Bakaláři+");
 assert.equal(t("loading"), "Loading…");
 assert.equal(t("cancel"), "Cancel");
 
-// Test translation with variables - Czech
+// Reset to Czech for next tests
 langSetting.value = "cs";
+
+// Test translation with variables - Czech
 assert.equal(t("updatedAt", { t: "10:30" }), "Aktualizováno 10:30");
 assert.equal(t("updatedAt", { t: "14:15" }), "Aktualizováno 14:15");
 
@@ -24,6 +23,9 @@ assert.equal(t("updatedAt", { t: "14:15" }), "Aktualizováno 14:15");
 langSetting.value = "en";
 assert.equal(t("updatedAt", { t: "10:30" }), "Updated 10:30");
 assert.equal(t("updatedAt", { t: "14:15" }), "Updated 14:15");
+
+// Reset to Czech for next tests
+langSetting.value = "cs";
 
 // Test dayShort function with Czech
 assert.equal(dayShort(1), "po");
@@ -36,7 +38,6 @@ assert.equal(dayLong(3), "středa");
 assert.equal(dayLong(7), "neděle");
 
 // Test fmtDate function with Czech
-langSetting.value = "cs";
 assert.equal(fmtDate("2026-11-10"), "úterý 10. 11.");
 assert.equal(fmtDate("2026-12-25"), "čtvrtek 25. 12.");
 
@@ -45,13 +46,15 @@ langSetting.value = "en";
 assert.equal(fmtDate("2026-11-10"), "Tue 10/11");
 assert.equal(fmtDate("2026-12-25"), "Thu 25/12");
 
+// Reset to Czech for next tests
+langSetting.value = "cs";
+
 // Test cap function
 assert.equal(cap("hello"), "Hello");
 assert.equal(cap("world"), "World");
 assert.equal(cap("test"), "Test");
 
 // Test fmtRelDay function with Czech
-langSetting.value = "cs";
 assert.equal(fmtRelDay("2026-11-10", "2026-11-10"), "dnes");
 assert.equal(fmtRelDay("2026-11-11", "2026-11-10"), "zítra");
 assert.equal(fmtRelDay("2026-11-09", "2026-11-10"), "včera");

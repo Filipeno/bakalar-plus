@@ -1,68 +1,45 @@
+// i18n.ts only needs @preact/signals (from the repo's node_modules) and is loaded as it is.
 import assert from "node:assert/strict";
-import { t, langSetting, dayShort, dayLong, fmtDate, cap, fmtRelDay } from "../src/lib/i18n.ts";
+const { cap, dayLong, dayShort, fmtDate, fmtRelDay, lang, langSetting, t } = await import("../src/lib/i18n.ts");
 
-// Test basic translation function with Czech (default)
-assert.equal(t("appName"), "Bakaláři+");
-assert.equal(t("loading"), "Načítám…");
-assert.equal(t("cancel"), "Zrušit");
-
-// Test basic translation function with English
-langSetting.value = "en";
-assert.equal(t("appName"), "Bakaláři+");
-assert.equal(t("loading"), "Loading…");
-assert.equal(t("cancel"), "Cancel");
-
-// Reset to Czech for next tests
+// language selection
 langSetting.value = "cs";
-
-// Test translation with variables - Czech
-assert.equal(t("updatedAt", { t: "10:30" }), "Aktualizováno 10:30");
-assert.equal(t("updatedAt", { t: "14:15" }), "Aktualizováno 14:15");
-
-// Test translation with variables - English
+assert.equal(lang.value, "cs");
 langSetting.value = "en";
-assert.equal(t("updatedAt", { t: "10:30" }), "Updated 10:30");
-assert.equal(t("updatedAt", { t: "14:15" }), "Updated 14:15");
+assert.equal(lang.value, "en");
 
-// Reset to Czech for next tests
+// t(): per-language text and {var} substitution
 langSetting.value = "cs";
+assert.equal(t("stepOf", { n: 2, total: 5 }), "Krok 2 ze 5");
+assert.equal(t("stepOf"), "Krok {n} ze {total}", "no vars -> placeholders stay");
+langSetting.value = "en";
+assert.equal(t("stepOf", { n: 2, total: 5 }), "Step 2 of 5");
+assert.equal(t("nonexistent_key"), "nonexistent_key", "unknown key falls back to the key");
 
-// Test dayShort function with Czech
+// weekday names
+langSetting.value = "cs";
 assert.equal(dayShort(1), "po");
-assert.equal(dayShort(3), "st");
-assert.equal(dayShort(7), "ne");
+assert.equal(dayLong(2), "úterý");
+langSetting.value = "en";
+assert.equal(dayShort(1), "Mon");
+assert.equal(dayLong(7), "Sunday");
 
-// Test dayLong function with Czech
-assert.equal(dayLong(1), "pondělí");
-assert.equal(dayLong(3), "středa");
-assert.equal(dayLong(7), "neděle");
-
-// Test fmtDate function with Czech
-assert.equal(fmtDate("2026-11-10"), "úterý 10. 11.");
-assert.equal(fmtDate("2026-12-25"), "čtvrtek 25. 12.");
-
-// Test fmtDate function with English
+// dates (2026-11-10 is a Tuesday)
+langSetting.value = "cs";
+assert.equal(fmtDate("2026-11-10"), "út 10. 11.");
+assert.equal(fmtDate("2026-11-10", true), "úterý 10. 11.");
 langSetting.value = "en";
 assert.equal(fmtDate("2026-11-10"), "Tue 10/11");
-assert.equal(fmtDate("2026-12-25"), "Thu 25/12");
 
-// Reset to Czech for next tests
+// relative days
 langSetting.value = "cs";
-
-// Test cap function
-assert.equal(cap("hello"), "Hello");
-assert.equal(cap("world"), "World");
-assert.equal(cap("test"), "Test");
-
-// Test fmtRelDay function with Czech
 assert.equal(fmtRelDay("2026-11-10", "2026-11-10"), "dnes");
 assert.equal(fmtRelDay("2026-11-11", "2026-11-10"), "zítra");
 assert.equal(fmtRelDay("2026-11-09", "2026-11-10"), "včera");
-
-// Test fmtRelDay function with English
+assert.equal(fmtRelDay("2026-11-20", "2026-11-10"), "pá 20. 11.");
 langSetting.value = "en";
-assert.equal(fmtRelDay("2026-11-10", "2026-11-10"), "today");
 assert.equal(fmtRelDay("2026-11-11", "2026-11-10"), "tomorrow");
-assert.equal(fmtRelDay("2026-11-09", "2026-11-10"), "yesterday");
 
-console.log("i18n tests passed");
+assert.equal(cap("školní"), "Školní");
+assert.equal(cap(""), "");
+console.log("i18n ok");

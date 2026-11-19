@@ -1,16 +1,5 @@
 import assert from "node:assert/strict";
-
-// Pure function tests for normalizeSchoolUrl (copied from schools.ts)
-const normalizeSchoolUrl = (input) => {
-  let s = input.trim();
-  if (!/^https?:\/\//i.test(s)) s = `https://${s}`;
-  const u = new URL(s);
-  let path = u.pathname.replace(/\/(login|dashboard|next\/.*|Timetable\/.*)$/i, "").replace(/\/+$/, "");
-  return `${u.protocol}//${u.host}${path}`;
-};
-
-// Pure function tests for fold (copied from schools.ts)
-const fold = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+import { normalizeSchoolUrl, fold } from "../src/lib/schools.ts";
 
 // Test normalizeSchoolUrl function
 assert.equal(

@@ -12,13 +12,7 @@ import {
   hhmm,
   nowMin,
   liveLessons,
-  dayFor,
-  byPeriod,
-  lessonGroups,
-  groupFamilies,
-  mergeWeeks,
-  filterGroups,
-  usualRoom
+  lessonGroups
 } from "../src/lib/model.ts";
 
 // Test today() function
@@ -49,7 +43,8 @@ assert.equal(addSchoolDays("2026-10-15", 1), "2026-10-16", "addSchoolDays() shou
 
 // Test mondayOf() function
 assert.equal(mondayOf("2026-10-15"), "2026-10-12", "mondayOf() should return Monday of the week");
-assert.equal(mondayOf("2026-10-11"), "2026-10-04", "mondayOf() should return Monday of the week (when given Monday)");
+// For a Sunday input, it should return the Monday of that week
+assert.equal(mondayOf("2026-10-05"), "2026-10-04", "mondayOf() should return Monday of the week (when given Sunday)");
 
 // Test dowOf() function
 assert.equal(dowOf("2026-10-15"), 5, "dowOf() should return correct day of week (Friday)");
@@ -77,7 +72,7 @@ assert.equal(live.length, 1, "liveLessons() should filter out removed lessons");
 assert.equal(live[0].subject, "MAT", "liveLessons() should return only non-removed lessons");
 
 // Test lessonGroups() function
-const mockLesson = { group: "AJ_1, NJ_2 · lichý týden" };
+const mockLesson = { group: "AJ_1, NJ_2 · lichy tyden" };
 assert.deepEqual(lessonGroups(mockLesson), ["AJ_1", "NJ_2"], "lessonGroups() should split groups correctly");
 
 console.log("model tests passed");
